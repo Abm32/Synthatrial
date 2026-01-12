@@ -1,0 +1,31 @@
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# Data / large files
+data/genomes/
+data/chembl/
+*.vcf
+*.vcf.gz
+*.tar.gz
+*.zip
+
+# Streamlit / cache
+.streamlit/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
