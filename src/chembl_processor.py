@@ -110,20 +110,22 @@ def extract_drug_targets(conn: sqlite3.Connection, molregno: int) -> List[Dict]:
         t.pref_name,
         t.organism,
         t.target_type,
-        a.standard_type,
-        a.standard_value,
-        a.standard_units,
-        a.standard_relation
+        act.standard_type,
+        act.standard_value,
+        act.standard_units,
+        act.standard_relation
     FROM 
-        activities a
+        activities act
+    JOIN 
+        assays a ON act.assay_id = a.assay_id
     JOIN 
         target_dictionary t ON a.tid = t.tid
     WHERE 
-        a.molregno = ?
-        AND a.standard_value IS NOT NULL
-        AND a.standard_type IN ('IC50', 'Ki', 'Kd', 'EC50', 'ED50')
+        act.molregno = ?
+        AND act.standard_value IS NOT NULL
+        AND act.standard_type IN ('IC50', 'Ki', 'Kd', 'EC50', 'ED50')
     ORDER BY 
-        a.standard_value ASC
+        act.standard_value ASC
     LIMIT 10
     """
     
@@ -168,9 +170,10 @@ def extract_side_effects(conn: sqlite3.Connection, molregno: int) -> List[str]:
     # Check if drug targets CYP enzymes (common source of drug-drug interactions)
     query = """
     SELECT DISTINCT t.pref_name
-    FROM activities a
+    FROM activities act
+    JOIN assays a ON act.assay_id = a.assay_id
     JOIN target_dictionary t ON a.tid = t.tid
-    WHERE a.molregno = ?
+    WHERE act.molregno = ?
     AND (t.pref_name LIKE '%CYP%' OR t.pref_name LIKE '%cytochrome%')
     """
     
