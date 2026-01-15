@@ -48,8 +48,8 @@ tar -xvzf data/chembl/chembl_34_sqlite.tar.gz -C data/chembl/
 
 **Pinecone Index:**
 ```bash
-python setup_pinecone_index.py
-python ingest_chembl_to_pinecone.py  # Optional: populate with ChEMBL data
+python scripts/setup_pinecone_index.py
+python scripts/ingest_chembl_to_pinecone.py  # Optional: populate with ChEMBL data
 ```
 
 ### 4. Run the Application
@@ -130,8 +130,10 @@ SynthaTrial/
 │   └── genomes/              # VCF files
 ├── app.py                     # Streamlit web UI
 ├── main.py                    # CLI entry point
-├── ingest_chembl_to_pinecone.py  # ChEMBL ingestion script
-├── setup_pinecone_index.py    # Pinecone index setup
+├── scripts/                    # Utility scripts
+│   ├── setup_pinecone_index.py    # Pinecone index setup
+│   ├── ingest_chembl_to_pinecone.py  # ChEMBL ingestion script
+│   └── list_models.py          # List available LLM models
 └── requirements.txt           # Python dependencies
 ```
 
@@ -197,7 +199,7 @@ python tests/quick_test.py
 
 **Quick fixes:**
 - **RDKit not found:** Use `conda install -c conda-forge rdkit`
-- **Pinecone index not found:** Run `python setup_pinecone_index.py`
+- **Pinecone index not found:** Run `python scripts/setup_pinecone_index.py`
 - **ChEMBL database not found:** Extract the tar.gz file (see setup guide)
 
 ---

@@ -30,13 +30,13 @@ Run the ingestion script to populate Pinecone with real drug data:
 export PINECONE_API_KEY="your_pinecone_api_key"
 
 # Run ingestion (this may take 10-30 minutes for 1000 drugs)
-python ingest_chembl_to_pinecone.py
+python scripts/ingest_chembl_to_pinecone.py
 ```
 
 **Note**: By default, this ingests 1000 drugs. To ingest more:
 ```bash
 export CHEMBL_LIMIT=5000  # Increase limit
-python ingest_chembl_to_pinecone.py
+python scripts/ingest_chembl_to_pinecone.py
 ```
 
 ## Step 2: Test VCF Processing
@@ -105,7 +105,7 @@ The Streamlit UI (`app.py`) currently uses manual patient profiles. To add VCF s
 - Generates molecular fingerprints
 - Prepares data for Pinecone ingestion
 
-### Vector Database Ingestion (`ingest_chembl_to_pinecone.py`)
+### Vector Database Ingestion (`scripts/ingest_chembl_to_pinecone.py`)
 - Extracts drugs from ChEMBL
 - Generates fingerprints for each drug
 - Ingests into Pinecone with metadata

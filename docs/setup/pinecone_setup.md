@@ -9,7 +9,7 @@ Run the automated setup script:
 export PINECONE_API_KEY="your_api_key_here"
 
 # Run the setup script
-python setup_pinecone_index.py
+python scripts/setup_pinecone_index.py
 ```
 
 The script will:
@@ -69,14 +69,14 @@ print(f'  Total vectors: {index.describe_index_stats().get(\"total_vector_count\
 
 **Solution**: Run the setup script:
 ```bash
-python setup_pinecone_index.py
+python scripts/setup_pinecone_index.py
 ```
 
 ### "Invalid dimension" Error
 
 **Solution**: The index must have exactly 2048 dimensions. Delete and recreate:
 ```bash
-python setup_pinecone_index.py
+python scripts/setup_pinecone_index.py
 # Choose option 2 to delete and recreate
 ```
 
@@ -105,7 +105,7 @@ After creating the index:
 
 2. **Ingest ChEMBL data**:
    ```bash
-   python ingest_chembl_to_pinecone.py
+   python scripts/ingest_chembl_to_pinecone.py
    ```
 
 3. **Test vector search**:

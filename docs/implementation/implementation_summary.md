@@ -31,7 +31,7 @@
 - `prepare_drug_for_vector_db()`: Prepares drugs for Pinecone ingestion
 - `batch_extract_drugs()`: Batch extraction for large datasets
 
-### 3. Pinecone Ingestion (`ingest_chembl_to_pinecone.py`)
+### 3. Pinecone Ingestion (`scripts/ingest_chembl_to_pinecone.py`)
 - ✅ ChEMBL to Pinecone ingestion script
 - ✅ Batch processing for efficient ingestion
 - ✅ Error handling and progress tracking
@@ -155,7 +155,7 @@
 3. **Ingest ChEMBL Data**:
    ```bash
    export PINECONE_API_KEY="your_key"
-   python ingest_chembl_to_pinecone.py
+   python scripts/ingest_chembl_to_pinecone.py
    ```
 
 4. **Test with VCF**:
@@ -168,7 +168,7 @@
 ### New Files
 - `src/vcf_processor.py` - VCF file processing
 - `src/chembl_processor.py` - ChEMBL database integration
-- `ingest_chembl_to_pinecone.py` - Pinecone ingestion script
+- `scripts/ingest_chembl_to_pinecone.py` - Pinecone ingestion script
 - `tests/validation_tests.py` - Validation test suite
 - `quick_test.py` - Quick integration test
 - `SETUP_VCF_CHEMBL.md` - Setup guide

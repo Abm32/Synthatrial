@@ -143,7 +143,7 @@ return {'vector': fingerprint_float}  # Success
 **Solution:**
 1. **Automated Setup (Recommended):**
    ```bash
-   python setup_pinecone_index.py
+   python scripts/setup_pinecone_index.py
    ```
 
 2. **Manual Setup:**
@@ -158,7 +158,7 @@ return {'vector': fingerprint_float}  # Success
    ```
 
 **Files Created:**
-- `setup_pinecone_index.py` - Automated index creation script
+- `scripts/setup_pinecone_index.py` - Automated index creation script
 
 **Reference:**
 - See `docs/setup/pinecone_setup.md` for detailed setup instructions
@@ -434,7 +434,7 @@ If you encounter an error not listed here:
 | RDKit not found | Environment | Use conda install |
 | Pandas not found | `src/vcf_processor.py` | Removed unused import |
 | ChEMBL path error | `src/chembl_processor.py` | Updated path checking |
-| Index not found | Created `setup_pinecone_index.py` | Automated index creation |
+| Index not found | Created `scripts/setup_pinecone_index.py` | Automated index creation |
 
 ---
 

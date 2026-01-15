@@ -278,7 +278,7 @@ AND (t.pref_name LIKE '%CYP%' OR t.pref_name LIKE '%cytochrome%')
 
 ## Ingestion Script
 
-### `ingest_chembl_to_pinecone.py`
+### `scripts/ingest_chembl_to_pinecone.py`
 
 **Purpose:** Ingest ChEMBL drugs into Pinecone
 
@@ -293,7 +293,7 @@ AND (t.pref_name LIKE '%CYP%' OR t.pref_name LIKE '%cytochrome%')
 **Usage:**
 ```bash
 export PINECONE_API_KEY="your_key"
-python ingest_chembl_to_pinecone.py
+python scripts/ingest_chembl_to_pinecone.py
 ```
 
 **Configuration:**
