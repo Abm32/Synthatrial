@@ -165,7 +165,7 @@ def run_validation_suite() -> Dict:
         print(f"  Expected Risk: {expected_risk}")
         print(f"  CPIC Guideline: {case['cpic_guideline']}")
         
-        is_correct, prediction, actual_risk = validate_prediction(
+        is_correct, prediction, risk_level = validate_prediction(
             case['name'],
             case['smiles'],
             'poor_metabolizer',
