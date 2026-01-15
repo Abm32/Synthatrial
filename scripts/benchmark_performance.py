@@ -201,13 +201,14 @@ Lifestyle: Alcohol consumer (Moderate)"""
     print("Summary for Paper")
     print("=" * 60)
     if retrieval_stats.get('mock_mode', False):
-        print("Retrieval latency: Mock mode (actual: typically 150-200ms with Pinecone)")
+        print("Retrieval latency: Mock mode - not measured (actual: typically 150-200ms with Pinecone)")
     else:
         print(f"Retrieval latency: {retrieval_stats['mean']:.0f}ms (mean), {retrieval_stats['median']:.0f}ms (median)")
     if llm_stats:
-        print(f"LLM simulation: {llm_stats['mean']:.1f}s (mean), {llm_stats['median']:.1f}s (median)")
+        print(f"LLM simulation: {llm_stats['mean']:.1f}s (mean), {llm_stats['median']:.1f}s (median), range {llm_stats['min']:.1f}-{llm_stats['max']:.1f}s")
     if e2e_stats:
-        print(f"End-to-end workflow: {e2e_stats['mean']:.1f}s (mean), {e2e_stats['median']:.1f}s (median)")
+        print(f"End-to-end workflow: {e2e_stats['mean']:.1f}s (mean), {e2e_stats['median']:.1f}s (median), range {e2e_stats['min']:.1f}-{e2e_stats['max']:.1f}s")
+    print("\nNote: LLM timing includes API call overhead. Local deployment would reduce this significantly.")
     
     print("\n✓ Benchmarking complete!")
 
