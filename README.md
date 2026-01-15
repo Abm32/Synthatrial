@@ -2,277 +2,239 @@
 
 **Version: 0.2 (Beta)**
 
-An MVP platform that simulates drug effects on synthetic patient cohorts using Agentic AI. The system accepts chemical inputs (SMILES), converts them to molecular fingerprints, searches for similar drugs, and uses LLMs to predict physiological outcomes.
-
-## Objective
-
-Build a functional MVP of the "In Silico Pharmacogenomics" platform for Technical Founders/Developers.
+An MVP platform that simulates drug effects on synthetic patient cohorts using Agentic AI. The system processes VCF files to extract genetic variants, uses ChEMBL database for drug information, and employs RAG (Retrieval-Augmented Generation) with LLMs to predict drug response based on patient genetics.
 
 ---
 
-## Phase 1: Environment & Tooling Setup
+## 🚀 Quick Start
 
-Before downloading terabytes of data, we need a robust environment. We use Conda because RDKit (the chemistry library) handles complex binary dependencies that standard pip sometimes struggles with.
-
-### 1.1 Install Miniconda
-
-**Download**: [Miniconda for your OS](https://docs.conda.io/en/latest/miniconda.html)
-
-**Action**: Install it and open your terminal.
-
-### 1.2 Create the Virtual Environment
-
-Run these commands to create an isolated workspace for SynthaTrial:
+### 1. Environment Setup
 
 ```bash
-# Create environment named 'synthatrial' with Python 3.10
+# Create conda environment
 conda create -n synthatrial python=3.10
-
-# Activate the environment
 conda activate synthatrial
 
-# Install Core Libraries
-# RDKit (Chemistry), Pandas (Data), Scikit-Learn (ML), PyTorch (AI)
+# Install dependencies
 conda install -c conda-forge rdkit pandas scipy scikit-learn
-pip install langchain langchain-openai pinecone-client psycopg2-binary python-dotenv
+pip install langchain langchain-google-genai pinecone-client python-dotenv streamlit
 ```
 
----
+### 2. Configure API Keys
 
-## Phase 2: Data Acquisition (The "Raw Ingredients")
-
-We need to download data from three specific global repositories. **Warning**: These datasets are massive. For the MVP, we will download "subsets" or query APIs where possible.
-
-### 2.1 Genomic Data (The 1000 Genomes Project)
-
-Instead of downloading the full 200TB, we will access the VCF (Variant Call Format) files for specific chromosomes. We use the UCSC mirror because it supports HTTPS, which is more reliable than the EBI FTP.
-
-**Source**: [International Genome Sample Resource (IGSR)](https://www.internationalgenome.org/)
-
-**MVP Action**: Download the "Phase 3 Integrated Variant Set" (smaller, easier to parse).
-
-**Command (Terminal)**:
-
+Create a `.env` file:
 ```bash
-# Create data directory
+GOOGLE_API_KEY=your_gemini_api_key
+PINECONE_API_KEY=your_pinecone_api_key  # Optional (mock mode if missing)
+PINECONE_INDEX=drug-index
+```
+
+### 3. Set Up Data
+
+**VCF File (Optional):**
+```bash
 mkdir -p data/genomes
-
-# Download a sample chromosome (Chromosome 22 is the smallest autosome, good for testing)
-# Option 1: Using wget (Linux/Mac)
-wget https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
-  -P data/genomes/
-
-# Option 2: Using curl (Windows/Universal - Use this if wget fails)
 curl -L https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
   -o data/genomes/chr22.vcf.gz
 ```
 
-### 2.2 Chemical Data (ChEMBL)
-
-We need the database of drugs and their targets.
-
-**Source**: [ChEMBL Database (EBI)](https://www.ebi.ac.uk/chembl/)
-
-**MVP Action**: Download the SQLite version (single file, no server needed).
-
-**Command**:
-
+**ChEMBL Database (Optional):**
 ```bash
 mkdir -p data/chembl
-# Note: Check the latest version number (currently v33 or v34)
 curl -L https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_34/chembl_34_sqlite.tar.gz \
   -o data/chembl/chembl_34_sqlite.tar.gz
-
-# Extract it
 tar -xvzf data/chembl/chembl_34_sqlite.tar.gz -C data/chembl/
 ```
 
-### 2.3 Medical Literature (PubMed)
-
-We cannot download all of PubMed easily (it's XML XML XML). For the MVP, we will use the BioPython library to query it live, or download the "Open Access Subset".
-
-**Source**: [PubMed Open Access FTP](https://ftp.ncbi.nlm.nih.gov/pub/pmc/)
-
-**MVP Action**: Use Bio.Entrez (Python wrapper) to fetch data on demand to save disk space.
-
----
-
-## Phase 3: The "Glue" Code (Implementation)
-
-Now we write the Python code to connect these datasets.
-
-### 3.1 The Directory Structure
-
-Organize your project folder like this:
-
-```
-/synthatrial
-  /data
-    /chembl
-    /genomes
-  /src
-    __init__.py
-    input_processor.py    # Handles SMILES strings
-    vector_search.py      # Handles Pinecone/Similarity
-    agent_engine.py       # Handles the LLM simulation
-  main.py                 # The entry point
-  requirements.txt        # Dependencies
-  README.md              # This file
+**Pinecone Index:**
+```bash
+python setup_pinecone_index.py
+python ingest_chembl_to_pinecone.py  # Optional: populate with ChEMBL data
 ```
 
-### 3.2 Step 1: Input Processor (`input_processor.py`)
+### 4. Run the Application
 
-This script takes the drug text (SMILES) and turns it into math.
-
-**Key Function**: `get_drug_fingerprint(smiles)`
-- Validates SMILES string using RDKit
-- Generates Morgan Fingerprint (Radius 2, 2048 bits)
-- Converts to Python list of integers (0s and 1s)
-
-### 3.3 Step 2: Vector Search (`vector_search.py`)
-
-This script finds similar drugs in your database. **Note**: You need a free API key from [Pinecone.io](https://www.pinecone.io/).
-
-**Key Function**: `find_similar_drugs(vector)`
-- Queries Pinecone index "drug-index" (create this on Pinecone dashboard with 2048 dimensions)
-- Returns top 3 matches with metadata (Name, Side Effects)
-- **CRITICAL**: Includes "Mock Mode" - if API key is missing, returns hardcoded dummy results
-
-**Setup**:
-1. Create a free account at Pinecone.io
-2. Create an index named "drug-index" with 2048 dimensions
-3. Set environment variable: `export PINECONE_API_KEY="your_key"`
-
-### 3.4 Step 3: The Agentic Core (`agent_engine.py`)
-
-This is the "Brain" that simulates the patient.
-
-**Key Function**: `run_simulation(drug_name, similar_drugs, patient_profile)`
-- Initializes ChatOpenAI (gpt-4o)
-- Creates a PromptTemplate with Pharmacogenomics Expert persona
-- Compares new drug to known similar drugs
-- Analyzes patient's genetic markers (e.g., CYP2D6 status)
-- Returns formatted prediction with Risk Level, Predicted Reaction, and Biological Mechanism
-
-**Setup**:
-- Set environment variable: `export OPENAI_API_KEY="your_key"`
-
-### 3.5 Step 4: Tying it together (`main.py`)
-
-The CLI entry point that orchestrates the entire workflow:
-
-1. Defines a dummy synthetic patient string (ID, Age, Genetics, Conditions)
-2. Defines a test drug (Paracetamol SMILES: `CC(=O)Nc1ccc(O)cc1`)
-3. Calls `get_drug_fingerprint`
-4. Calls `find_similar_drugs`
-5. Calls `run_simulation`
-6. Prints the final AI prediction clearly
-
----
-
-## Usage
-
-### Quick Start
-
-1. **Set up environment variables** (create `.env` file or export):
-   ```bash
-   export GOOGLE_API_KEY="your_gemini_api_key"       # Required for LLM simulation
-   export GEMINI_MODEL="gemini-1.5-flash"            # Optional override
-export PINECONE_API_KEY="your_pinecone_api_key"   # Optional; mock mode if missing
-   ```
-
-2. **Run the simulation**:
-
-   **Option A: Streamlit Web UI (Recommended)**
-   ```bash
-   streamlit run app.py
-   ```
-   Then open your browser to `http://localhost:8501`
-
-   **Option B: Command Line Interface**
-   ```bash
-   python main.py
-   ```
-
-### Expected Output
-
+**Streamlit UI (Recommended):**
+```bash
+streamlit run app.py
 ```
---- Starting Simulation for Synthetic-Para-101 ---
--> Drug digitized.
--> Found 3 similar biological anchors.
 
---- SIMULATION RESULT ---
-RISK LEVEL: Medium
-PREDICTED REACTION: [AI-generated analysis]
-BIOLOGICAL MECHANISM: [Explanation]
+**Command Line:**
+```bash
+# With VCF file
+python main.py --vcf data/genomes/chr22.vcf.gz --sample-id HG00096
+
+# With manual profile
+python main.py --cyp2d6-status poor_metabolizer
 ```
 
 ---
 
-## Phase 4: Next Steps (Post-MVP)
+## 📚 Documentation
 
-### Ingestion Script
-Write a script to read the ChEMBL SQLite file and push vectors to Pinecone (so `find_similar_drugs` actually works with real data).
+**Comprehensive documentation is available in the `docs/` directory:**
 
-### UI
-Build a simple Streamlit frontend (`pip install streamlit`) so you can type in SMILES and see the result in a web browser.
+- **[Documentation Index](docs/README.md)** - Overview of all documentation
+- **[Setup Guides](docs/setup/)** - Detailed setup instructions
+- **[Implementation Details](docs/implementation/)** - How things work
+- **[Troubleshooting](docs/troubleshooting/)** - Errors and solutions
+- **[Concepts](docs/concepts/)** - Pharmacogenomics, RAG, vector databases explained
 
-### Deploy
-Push this code to GitHub as proof of your "Technical Approach".
+**Quick Links:**
+- [VCF & ChEMBL Setup](docs/setup/vcf_chembl_setup.md)
+- [Pinecone Setup](docs/setup/pinecone_setup.md)
+- [Errors & Solutions](docs/troubleshooting/errors_and_solutions.md)
+- [Implementation Summary](docs/implementation/implementation_summary.md)
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
+
+```
+User Input (Drug SMILES + Patient Profile)
+    ↓
+[Input Processor] → Molecular Fingerprint (2048-bit vector)
+    ↓
+[Vector Search] → Similar Drugs (from ChEMBL/Pinecone)
+    ↓
+[VCF Processor] → Genetic Variants (CYP2D6, CYP2C19, CYP3A4)
+    ↓
+[Agent Engine] → LLM Prediction (RAG with retrieved context)
+    ↓
+Output (Risk Level + Predicted Reaction + Mechanism)
+```
+
+---
+
+## 📁 Project Structure
 
 ```
 SynthaTrial/
-├── data/                  # Data storage directory
-│   ├── chembl/           # ChEMBL database files
-│   └── genomes/          # 1000 Genomes VCF files
+├── docs/                      # Comprehensive documentation
+│   ├── setup/                 # Setup guides
+│   ├── implementation/        # Implementation details
+│   ├── troubleshooting/      # Errors and solutions
+│   ├── concepts/              # Conceptual explanations
+│   └── paper/                 # Paper review
 ├── src/
-│   ├── __init__.py
-│   ├── input_processor.py    # SMILES → Fingerprint conversion
-│   ├── vector_search.py      # Pinecone similarity search
-│   └── agent_engine.py       # LangChain LLM logic
-├── app.py                    # Streamlit web UI (recommended)
-├── main.py                   # CLI entry point
-├── requirements.txt          # Python dependencies
-└── README.md                # This file
+│   ├── input_processor.py     # SMILES → Fingerprint
+│   ├── vector_search.py       # Pinecone similarity search
+│   ├── agent_engine.py        # LLM-based simulation
+│   ├── vcf_processor.py      # VCF file processing
+│   └── chembl_processor.py    # ChEMBL database integration
+├── tests/
+│   ├── validation_tests.py   # Comprehensive test suite
+│   └── quick_test.py          # Quick integration test
+├── data/
+│   ├── chembl/               # ChEMBL database files
+│   └── genomes/              # VCF files
+├── app.py                     # Streamlit web UI
+├── main.py                    # CLI entry point
+├── ingest_chembl_to_pinecone.py  # ChEMBL ingestion script
+├── setup_pinecone_index.py    # Pinecone index setup
+└── requirements.txt           # Python dependencies
 ```
 
-## Modules
+---
 
-### `input_processor.py`
-- `get_drug_fingerprint(smiles)`: Converts SMILES to 2048-bit Morgan Fingerprint
+## ✨ Features
 
-### `vector_search.py`
-- `find_similar_drugs(vector, top_k=3)`: Searches for similar drugs
-- Includes mock mode for testing without Pinecone credentials
+- ✅ **VCF File Processing** - Extract genetic variants from 1000 Genomes Project VCF files
+- ✅ **ChEMBL Integration** - Extract drug information from ChEMBL database
+- ✅ **Vector Similarity Search** - Find similar drugs using molecular fingerprints
+- ✅ **RAG-Enhanced LLM** - Retrieval-Augmented Generation for accurate predictions
+- ✅ **Patient Profile Generation** - Create profiles from VCF data or manual input
+- ✅ **Streamlit UI** - User-friendly web interface
+- ✅ **Comprehensive Testing** - Validation test suite
 
-### `agent_engine.py`
-- `run_simulation(drug_name, similar_drugs, patient_profile)`: Generates AI predictions
+---
 
-## Example Patient Profile
+## 🔧 Key Components
 
-The default patient profile includes:
-- **ID**: SP-01
-- **Age**: 45
-- **Genetics**: CYP2D6 Poor Metabolizer (Allele *4/*4)
-- **Conditions**: Chronic Liver Disease (Mild)
-- **Lifestyle**: Alcohol consumer (Moderate)
+### Input Processor
+Converts SMILES strings to 2048-bit Morgan fingerprints using RDKit.
 
-## Required API Keys
+### Vector Search
+Searches Pinecone vector database for similar drugs based on molecular structure.
 
-- **GOOGLE_API_KEY**: Required for LLM simulations (Gemini)
-- **PINECONE_API_KEY**: Optional - system will use mock mode if not provided
+### VCF Processor
+Extracts CYP gene variants (CYP2D6, CYP2C19, CYP3A4) from VCF files and infers metabolizer status.
 
-## Notes
+### ChEMBL Processor
+Extracts approved drugs, targets, and side effects from ChEMBL SQLite database.
 
-- The system gracefully handles missing Pinecone credentials by using mock data
-- All modules include comprehensive error handling
-- The LLM prompt is designed to provide clinical-grade pharmacogenomics analysis
-- For MVP, mock mode allows testing without external API dependencies
+### Agent Engine
+Uses Gemini LLM with RAG to predict drug response based on patient genetics and similar drugs.
 
-## License
+---
+
+## 🧪 Testing
+
+```bash
+# Run validation tests
+python tests/validation_tests.py
+
+# Quick integration test
+python tests/quick_test.py
+```
+
+---
+
+## 📖 Learn More
+
+- **Pharmacogenomics Concepts:** [docs/concepts/pharmacogenomics.md](docs/concepts/pharmacogenomics.md)
+- **Vector Databases:** [docs/concepts/vector_databases.md](docs/concepts/vector_databases.md)
+- **RAG Explained:** [docs/concepts/rag_explained.md](docs/concepts/rag_explained.md)
+- **VCF Integration:** [docs/implementation/vcf_integration.md](docs/implementation/vcf_integration.md)
+- **ChEMBL Integration:** [docs/implementation/chembl_integration.md](docs/implementation/chembl_integration.md)
+
+---
+
+## 🐛 Troubleshooting
+
+**Common issues and solutions are documented in:**
+- [Errors and Solutions](docs/troubleshooting/errors_and_solutions.md)
+
+**Quick fixes:**
+- **RDKit not found:** Use `conda install -c conda-forge rdkit`
+- **Pinecone index not found:** Run `python setup_pinecone_index.py`
+- **ChEMBL database not found:** Extract the tar.gz file (see setup guide)
+
+---
+
+## 📝 Requirements
+
+- Python 3.10+
+- Conda (for RDKit installation)
+- API Keys:
+  - Google API Key (required for Gemini LLM)
+  - Pinecone API Key (optional, mock mode if missing)
+
+---
+
+## 🔗 Resources
+
+- **1000 Genomes Project:** https://www.internationalgenome.org/
+- **ChEMBL Database:** https://www.ebi.ac.uk/chembl/
+- **Pinecone:** https://www.pinecone.io/
+- **RDKit:** https://www.rdkit.org/
+- **PharmVar:** https://www.pharmvar.org/ (CYP allele definitions)
+
+---
+
+## 📄 License
 
 This is an MVP prototype for research and development purposes.
+
+---
+
+## 🙏 Acknowledgments
+
+- 1000 Genomes Project for genomic data
+- ChEMBL team for drug database
+- RDKit community for cheminformatics tools
+- LangChain for LLM integration framework
+
+---
+
+*For detailed documentation, see [docs/README.md](docs/README.md)*
