@@ -205,8 +205,11 @@ def prepare_drug_for_vector_db(drug: Dict, conn: sqlite3.Connection) -> Optional
         - metadata: Drug name, targets, side effects
     """
     try:
-        # Generate molecular fingerprint
+        # Generate molecular fingerprint (returns list of integers)
         fingerprint = get_drug_fingerprint(drug['smiles'])
+        
+        # Convert to floats (Pinecone requires float vectors)
+        fingerprint_float = [float(x) for x in fingerprint]
         
         # Extract targets
         targets = extract_drug_targets(conn, drug['molregno'])
@@ -227,7 +230,7 @@ def prepare_drug_for_vector_db(drug: Dict, conn: sqlite3.Connection) -> Optional
         
         return {
             'id': f"chembl_{drug['molregno']}",
-            'vector': fingerprint,
+            'vector': fingerprint_float,
             'metadata': metadata
         }
         
