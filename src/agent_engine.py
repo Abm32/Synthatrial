@@ -66,10 +66,12 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     - Check if the patient's genetic markers (e.g., CYP2D6 status) conflict with the drug's metabolism.
     - Predict specific adverse outcomes.
     
-    OUTPUT FORMAT:
-    - RISK LEVEL: [Low/Medium/High]
+    OUTPUT FORMAT (MUST FOLLOW EXACTLY):
+    - RISK LEVEL: [Low/Medium/High] (choose ONE: Low, Medium, or High)
     - PREDICTED REACTION: [Description]
     - BIOLOGICAL MECHANISM: [Why it happens]
+    
+    IMPORTANT: Always start your response with "RISK LEVEL: " followed by exactly one of: Low, Medium, or High.
     """
     
     prompt = PromptTemplate(
