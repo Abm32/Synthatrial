@@ -9,6 +9,7 @@ import gzip
 import os
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
+from .variant_db import VARIANT_DB, get_phenotype_prediction, get_variant_info
 
 # CYP gene locations (GRCh37/hg19 coordinates)
 # Updated to include CYP2C9 and corrected CYP2C19 coordinates
@@ -217,7 +218,11 @@ def extract_cyp_variants(vcf_path: str, gene: str = 'CYP2D6', sample_limit: Opti
 
 def infer_metabolizer_status(variants: List[Dict], sample_id: str, gene: str = 'CYP2D6') -> str:
     """
-    Infer CYP metabolizer status using Activity Score (AS) method.
+    Infer CYP metabolizer status using Targeted Variant Lookup (Dictionary-Based Genotyping).
+    
+    This method replaces naive variant counting with targeted lookup of Tier 1 Clinical Variants
+    (CPIC Level A) based on specific rsIDs. Only variants known to affect enzyme function are
+    considered, filtering out synonymous mutations and intronic variants.
     
     Based on CPIC/PharmVar guidelines:
     - AS = 0: Poor Metabolizer
@@ -225,10 +230,8 @@ def infer_metabolizer_status(variants: List[Dict], sample_id: str, gene: str = '
     - AS = 1.5-2.0: Extensive Metabolizer (Normal)
     - AS > 2.0: Ultra-Rapid Metabolizer
     
-    Falls back to variant counting if star alleles cannot be determined.
-    
     Args:
-        variants: List of variant dictionaries
+        variants: List of variant dictionaries from VCF
         sample_id: Sample ID to analyze
         gene: Gene name (CYP2D6, CYP2C19, CYP2C9)
         
@@ -237,89 +240,82 @@ def infer_metabolizer_status(variants: List[Dict], sample_id: str, gene: str = '
                            'poor_metabolizer', or 'ultra_rapid_metabolizer'
     """
     if not variants:
-        return 'extensive_metabolizer'  # Default assumption
+        return 'extensive_metabolizer'  # Default: wild-type (*1/*1)
     
-    # Get activity score mapping for this gene
-    activity_scores = CYP_ACTIVITY_SCORES.get(gene, CYP2D6_ACTIVITY_SCORES)
+    # Get critical variants database for this gene
+    gene_db = VARIANT_DB.get(gene, {})
+    if not gene_db:
+        # Fallback: if gene not in database, assume normal
+        return 'extensive_metabolizer'
     
-    # Try to infer star alleles from variants
-    # This is simplified - real systems use haplotype phasing
-    # For now, we'll use a heuristic based on variant patterns
-    
-    # Count non-reference alleles and check for structural variants
-    non_ref_count = 0
+    # Track found alleles and structural variants
+    found_alleles = []
+    copy_number = 2  # Default diploid
     has_deletion = False
-    has_duplication = False
-    functional_variants = 0  # Variants that likely reduce function
     
+    # Scan variants for critical rsIDs
     for variant in variants:
         if sample_id not in variant.get('samples', {}):
             continue
         
         genotype = variant['samples'][sample_id]
+        rsid = variant.get('id', '')
         
-        # Check for structural variants
-        if variant.get('alt') == '<DEL>' or '<DEL>' in str(variant.get('alt', '')):
+        # Skip if genotype is homozygous reference (0/0) or missing
+        if genotype in ['0/0', '0|0', '.', './.', '.|.']:
+            continue
+        
+        # Check for structural variants (deletions/duplications)
+        alt = str(variant.get('alt', ''))
+        info = str(variant.get('info', ''))
+        
+        if '<DEL>' in alt or 'DEL' in info.upper():
             has_deletion = True
-        if 'DUP' in str(variant.get('alt', '')) or 'MULTI' in str(variant.get('info', '')):
-            has_duplication = True
+            found_alleles.append(f"{gene}_DEL")
+            copy_number = 0
+            continue
         
-        # Parse genotype (format: 0/0, 0/1, 1/1, etc.)
-        if '/' in genotype:
-            alleles = genotype.split('/')
-            for allele in alleles:
-                if allele != '0' and allele != '.':
-                    non_ref_count += 1
-                    # Check if this is a likely function-reducing variant
-                    # (frameshift, stop codon, splice site)
-                    info = variant.get('info', '')
-                    if 'LOF' in info or 'frameshift' in info.lower() or 'stop' in info.lower():
-                        functional_variants += 1
+        if 'DUP' in alt.upper() or 'DUP' in info.upper() or 'MULTI' in info.upper():
+            # Duplication detected - increase copy number
+            copy_number = 3  # At least one extra copy
+            found_alleles.append(f"{gene}_DUP")
+            continue
         
-        elif '|' in genotype:  # Phased
-            alleles = genotype.split('|')
-            for allele in alleles:
-                if allele != '0' and allele != '.':
-                    non_ref_count += 1
-                    info = variant.get('info', '')
-                    if 'LOF' in info or 'frameshift' in info.lower() or 'stop' in info.lower():
-                        functional_variants += 1
+        # Check if this variant is in our critical variants database
+        if rsid in gene_db:
+            variant_info = gene_db[rsid]
+            allele = variant_info['allele']
+            
+            # Check if patient actually has this variant (not homozygous reference)
+            # Parse genotype to determine zygosity
+            is_variant = False
+            is_homozygous = False
+            
+            if '/' in genotype:
+                alleles = genotype.split('/')
+                if len(alleles) == 2:
+                    if alleles[0] != '0' and alleles[1] != '0':
+                        is_variant = True
+                        is_homozygous = (alleles[0] == alleles[1])
+                    elif alleles[0] != '0' or alleles[1] != '0':
+                        is_variant = True
+            elif '|' in genotype:
+                alleles = genotype.split('|')
+                if len(alleles) == 2:
+                    if alleles[0] != '0' and alleles[1] != '0':
+                        is_variant = True
+                        is_homozygous = (alleles[0] == alleles[1])
+                    elif alleles[0] != '0' or alleles[1] != '0':
+                        is_variant = True
+            
+            if is_variant:
+                found_alleles.append(allele)
+                print(f"  -> Found Critical Variant: {rsid} ({allele}) - {variant_info['impact']} - {variant_info['name']}")
     
-    # Calculate Activity Score using heuristic
-    # This is a simplified approach - real systems need haplotype phasing
+    # Use variant_db function to predict phenotype based on found alleles
+    phenotype = get_phenotype_prediction(gene, found_alleles, copy_number)
     
-    # Base activity score: assume wild-type (*1/*1) = 2.0
-    activity_score = 2.0
-    
-    # Adjust for deletions (no function alleles)
-    if has_deletion:
-        activity_score -= 1.0  # One allele lost
-    
-    # Adjust for function-reducing variants
-    if functional_variants >= 2:
-        activity_score -= 1.0  # Both alleles likely non-functional
-    elif functional_variants == 1:
-        activity_score -= 0.5  # One allele reduced function
-    
-    # Adjust for high variant count (likely multiple non-functional variants)
-    if non_ref_count >= 4:
-        # Could be duplication (ultra-rapid) OR multiple loss-of-function variants
-        if has_duplication:
-            activity_score += 1.0  # Duplication increases activity
-        else:
-            activity_score -= 1.0  # Multiple LOF variants reduce activity
-    elif non_ref_count >= 2:
-        activity_score -= 0.5  # Some reduced function
-    
-    # Determine metabolizer status from Activity Score
-    if activity_score > 2.0:
-        return 'ultra_rapid_metabolizer'
-    elif activity_score >= 1.5:
-        return 'extensive_metabolizer'
-    elif activity_score >= 0.5:
-        return 'intermediate_metabolizer'
-    else:
-        return 'poor_metabolizer'
+    return phenotype
 
 
 def generate_patient_profile_from_vcf(
