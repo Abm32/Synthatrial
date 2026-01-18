@@ -75,16 +75,18 @@ python main.py --cyp2d6-status poor_metabolizer
 **Comprehensive documentation is available in the `docs/` directory:**
 
 - **[Documentation Index](docs/README.md)** - Overview of all documentation
-- **[Setup Guides](docs/setup/)** - Detailed setup instructions
-- **[Implementation Details](docs/implementation/)** - How things work
-- **[Troubleshooting](docs/troubleshooting/)** - Errors and solutions
-- **[Concepts](docs/concepts/)** - Pharmacogenomics, RAG, vector databases explained
+- **[Setup Guide](docs/setup.md)** - Complete installation and configuration
+- **[Usage Guide](docs/usage.md)** - How to run simulations and interpret results
+- **[Implementation Details](docs/implementation.md)** - Technical architecture and code
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+- **[Paper Review](docs/paper-review.md)** - Research validation and results
+- **[Concepts](docs/concepts/)** - Pharmacogenomics, RAG, and vector databases explained
 
 **Quick Links:**
-- [VCF & ChEMBL Setup](docs/setup/vcf_chembl_setup.md)
-- [Pinecone Setup](docs/setup/pinecone_setup.md)
-- [Errors & Solutions](docs/troubleshooting/errors_and_solutions.md)
-- [Implementation Summary](docs/implementation/implementation_summary.md)
+- [Complete Setup Guide](docs/setup.md) - Everything you need to get started
+- [Usage Examples](docs/usage.md) - Command-line and web interface examples
+- [Troubleshooting](docs/troubleshooting.md) - Fix common issues
+- [Technical Details](docs/implementation.md) - How the system works
 
 ---
 

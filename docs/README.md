@@ -1,129 +1,126 @@
 # SynthaTrial Documentation
 
-Welcome to the SynthaTrial documentation. This directory contains comprehensive documentation organized by topic.
+Welcome to the SynthaTrial documentation. This directory contains comprehensive documentation organized for easy navigation.
 
 ## 📚 Documentation Structure
 
 ```
 docs/
-├── README.md (this file)
-├── setup/              # Setup and installation guides
-│   ├── pinecone_setup.md
-│   └── vcf_chembl_setup.md
-├── implementation/     # Implementation details
-│   ├── implementation_summary.md
-│   ├── vcf_integration.md
-│   └── chembl_integration.md
-├── troubleshooting/   # Errors and solutions
-│   └── errors_and_solutions.md
-├── concepts/          # Conceptual explanations
-│   ├── pharmacogenomics.md
-│   ├── vector_databases.md
-│   └── rag_explained.md
-└── paper/             # Paper-related documentation
-    └── paper_review.md
+├── README.md              # This file - documentation index
+├── setup.md               # Complete setup and installation guide
+├── usage.md               # Usage examples and CLI reference
+├── implementation.md      # Technical implementation details
+├── troubleshooting.md     # Common issues and solutions
+├── paper-review.md        # Research paper review and validation
+└── concepts/              # Conceptual explanations
+    ├── pharmacogenomics.md
+    ├── rag_explained.md
+    └── vector_databases.md
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-**New to SynthaTrial?** Start here:
+**New to SynthaTrial?** Follow this path:
 
-1. **Read the main README:** `../README.md` - Overview and quick start
-2. **Setup Guide:** `setup/vcf_chembl_setup.md` - Set up VCF and ChEMBL data
-3. **Run Tests:** `python tests/validation_tests.py` - Verify everything works
+1. **[Setup Guide](setup.md)** - Install dependencies and configure the system
+2. **[Usage Guide](usage.md)** - Learn how to run simulations and interpret results
+3. **[Concepts](concepts/)** - Understand the underlying science and technology
 
----
-
-## 📖 Documentation by Topic
-
-### Setup and Installation
-
-- **[Pinecone Setup](setup/pinecone_setup.md)**
-  - How to create and configure Pinecone index
-  - API key setup
-  - Troubleshooting index issues
-
-- **[VCF and ChEMBL Setup](setup/vcf_chembl_setup.md)**
-  - Downloading VCF files from 1000 Genomes Project
-  - Extracting ChEMBL database
-  - Ingesting data into Pinecone
-
-### Implementation Details
-
-- **[Implementation Summary](implementation/implementation_summary.md)**
-  - Overview of all implemented features
-  - What's working vs. what's planned
-  - Quick reference guide
-
-- **[VCF Integration](implementation/vcf_integration.md)**
-  - How VCF file processing works
-  - CYP gene variant extraction
-  - Patient profile generation
-
-- **[ChEMBL Integration](implementation/chembl_integration.md)**
-  - ChEMBL database structure
-  - Drug extraction and processing
-  - Vector database preparation
-
-### Troubleshooting
-
-- **[Errors and Solutions](troubleshooting/errors_and_solutions.md)**
-  - Complete catalog of errors encountered
-  - Step-by-step solutions
-  - Prevention tips
-
-### Concepts and Theory
-
-- **[Pharmacogenomics](concepts/pharmacogenomics.md)**
-  - What is pharmacogenomics?
-  - CYP enzymes and metabolizer status
-  - How genetics affects drug response
-
-- **[Vector Databases](concepts/vector_databases.md)**
-  - What are vector databases?
-  - Molecular fingerprints
-  - Similarity search explained
-
-- **[RAG Explained](concepts/rag_explained.md)**
-  - What is Retrieval-Augmented Generation?
-  - How RAG works in SynthaTrial
-  - Benefits and limitations
-
-### Paper Documentation
-
-- **[Paper Review](paper/paper_review.md)**
-  - Comparison of paper claims vs. implementation
-  - Accuracy assessment
-  - Recommendations for publication
+**Having Issues?** Check the **[Troubleshooting Guide](troubleshooting.md)**
 
 ---
 
-## 🔍 Finding What You Need
+## 📖 Documentation by Purpose
+
+### Getting Started
+- **[Setup Guide](setup.md)** - Complete installation and configuration
+  - Environment setup (conda, pip)
+  - API key configuration
+  - Data download (VCF files, ChEMBL database)
+  - Verification and testing
+
+### Using the System
+- **[Usage Guide](usage.md)** - How to run pharmacogenomics simulations
+  - Web interface (Streamlit)
+  - Command-line interface
+  - Example test cases
+  - API usage (Python)
+
+### Understanding the Technology
+- **[Implementation Guide](implementation.md)** - Technical details
+  - Architecture overview
+  - Module responsibilities
+  - Data flow and processing
+  - Performance characteristics
+
+### Solving Problems
+- **[Troubleshooting Guide](troubleshooting.md)** - Common issues and solutions
+  - Installation problems
+  - API key issues
+  - VCF file problems
+  - Performance issues
+
+### Research and Validation
+- **[Paper Review](paper-review.md)** - Research paper analysis
+  - Technical accuracy validation
+  - Test results and benchmarks
+  - Publication readiness assessment
+
+### Conceptual Background
+- **[Pharmacogenomics](concepts/pharmacogenomics.md)** - Science behind the system
+- **[RAG Explained](concepts/rag_explained.md)** - Retrieval-Augmented Generation
+- **[Vector Databases](concepts/vector_databases.md)** - Molecular similarity search
+
+---
+
+## 🎯 Find What You Need
 
 ### "I want to..."
 
-- **Set up the system:** → `setup/`
-- **Understand how something works:** → `implementation/`
-- **Fix an error:** → `troubleshooting/errors_and_solutions.md`
-- **Learn the concepts:** → `concepts/`
-- **Review the paper:** → `paper/paper_review.md`
+- **Set up the system** → [Setup Guide](setup.md)
+- **Run a simulation** → [Usage Guide](usage.md)
+- **Understand how it works** → [Implementation Guide](implementation.md)
+- **Fix an error** → [Troubleshooting Guide](troubleshooting.md)
+- **Learn the concepts** → [Concepts](concepts/)
+- **Review the research** → [Paper Review](paper-review.md)
 
 ### "I'm getting an error..."
 
-1. Check `troubleshooting/errors_and_solutions.md`
-2. Search for the error message
+1. Check [Troubleshooting Guide](troubleshooting.md)
+2. Search for your specific error message
 3. Follow the solution steps
 4. If not found, check relevant implementation docs
 
 ### "I want to understand..."
 
-- **Pharmacogenomics:** → `concepts/pharmacogenomics.md`
-- **Vector search:** → `concepts/vector_databases.md`
-- **RAG:** → `concepts/rag_explained.md`
-- **VCF processing:** → `implementation/vcf_integration.md`
-- **ChEMBL integration:** → `implementation/chembl_integration.md`
+- **Pharmacogenomics** → [concepts/pharmacogenomics.md](concepts/pharmacogenomics.md)
+- **Vector search** → [concepts/vector_databases.md](concepts/vector_databases.md)
+- **RAG** → [concepts/rag_explained.md](concepts/rag_explained.md)
+- **System architecture** → [implementation.md](implementation.md)
+
+---
+
+## 🔍 Key Features Covered
+
+### Core Functionality
+- **Molecular Analysis**: SMILES → Morgan fingerprints (RDKit)
+- **Similarity Search**: Vector database search (Pinecone)
+- **Genetic Profiling**: VCF file processing (1000 Genomes Project)
+- **AI Simulation**: LLM-based pharmacogenomics prediction (Google Gemini)
+
+### Big 3 Enzymes Support
+- **CYP2D6** (Chromosome 22): ~25% of drugs
+- **CYP2C19** (Chromosome 10): Antiplatelet drugs, PPIs
+- **CYP2C9** (Chromosome 10): Anticoagulants, NSAIDs
+- **Combined Coverage**: ~60-70% of clinically used drugs
+
+### Validation and Testing
+- **CPIC Compliance**: Follows clinical guidelines
+- **Test Suite**: Comprehensive validation tests
+- **Performance Benchmarks**: Timing and accuracy metrics
+- **Research Validation**: 100% accuracy on test cases
 
 ---
 
@@ -131,51 +128,105 @@ docs/
 
 All documentation follows these principles:
 
-1. **Clear Structure:** Organized with headers and sections
-2. **Code Examples:** Practical examples for every concept
-3. **Error Handling:** Documents common errors and solutions
-4. **References:** Links to external resources
-5. **Cross-References:** Links between related documents
+1. **Clear Structure**: Organized with headers and sections
+2. **Practical Examples**: Code examples for every concept
+3. **Error Solutions**: Documents common errors and fixes
+4. **Cross-References**: Links between related documents
+5. **Up-to-Date**: Reflects current implementation
 
 ---
 
-## 🔄 Keeping Documentation Updated
+## 🔄 Quick Reference
 
-When making changes:
+### Essential Commands
 
-1. **Update relevant docs** in `implementation/`
-2. **Add errors/solutions** to `troubleshooting/`
-3. **Update setup guides** if installation changes
-4. **Keep concepts accurate** if implementation changes
+```bash
+# Setup
+conda create -n synthatrial python=3.10
+conda activate synthatrial
+conda install -c conda-forge rdkit
+pip install -r requirements.txt
+
+# Run web interface
+streamlit run app.py
+
+# Run CLI simulation
+python main.py --vcf data/genomes/chr22.vcf.gz --drug-name Codeine
+
+# Test system
+python tests/quick_test.py
+```
+
+### Key Files
+
+- **Main application**: `app.py` (web), `main.py` (CLI)
+- **Core modules**: `src/` directory
+- **Test suite**: `tests/validation_tests.py`
+- **Setup scripts**: `scripts/setup_pinecone_index.py`
+
+### Important Paths
+
+- **Data files**: `data/genomes/` (VCF), `data/chembl/` (database)
+- **Configuration**: `.env` file (API keys)
+- **Documentation**: `docs/` directory
 
 ---
 
-## 📞 Getting Help
+## 🆘 Getting Help
 
-If documentation doesn't answer your question:
+### Self-Help Checklist
 
-1. Check the main README: `../README.md`
-2. Review error solutions: `troubleshooting/errors_and_solutions.md`
-3. Run validation tests: `python tests/validation_tests.py`
-4. Check implementation details in `implementation/`
+Before asking for help:
+
+- ✅ Read the relevant documentation section
+- ✅ Check [troubleshooting guide](troubleshooting.md)
+- ✅ Run `python tests/quick_test.py`
+- ✅ Verify API keys and file paths
+- ✅ Check that conda environment is activated
+
+### Debug Information
+
+When reporting issues, include:
+
+1. **Error message**: Full traceback
+2. **System info**: `python --version`, `conda --version`
+3. **Environment**: `conda list`
+4. **File status**: `ls -la data/`
+5. **Steps to reproduce**: Exact commands used
 
 ---
 
 ## 🎯 Documentation Roadmap
 
-**Completed:**
-- ✅ Setup guides
-- ✅ Implementation details
-- ✅ Error catalog
-- ✅ Concept explanations
-- ✅ Paper review
+**Current Status**:
+- ✅ Complete setup and usage guides
+- ✅ Comprehensive troubleshooting
+- ✅ Technical implementation details
+- ✅ Research validation and review
+- ✅ Conceptual explanations
 
-**Future:**
-- 🔄 API documentation
-- 🔄 Deployment guide
+**Future Additions**:
+- 🔄 API documentation (auto-generated)
+- 🔄 Deployment guide (production setup)
+- 🔄 Contributing guide (for developers)
 - 🔄 Performance optimization guide
-- 🔄 Contributing guide
 
 ---
 
-*Last Updated: After VCF/ChEMBL implementation*
+## 📊 System Overview
+
+**SynthaTrial** is an In Silico Pharmacogenomics Platform (Version 0.3 Beta) that:
+
+- Simulates drug effects on synthetic patient cohorts using Agentic AI
+- Processes VCF files to extract genetic variants (Big 3 enzymes)
+- Uses vector similarity search to find related drugs
+- Employs LLMs with RAG for pharmacogenomics predictions
+- Follows CPIC guidelines for clinical accuracy
+
+**Target Users**: Researchers, drug developers, bioinformatics professionals, educators
+
+**Status**: Research prototype (not for clinical decision-making)
+
+---
+
+*For the most up-to-date information, see the individual documentation files. Last updated: Documentation restructure.*
