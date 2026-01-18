@@ -37,7 +37,7 @@ def _get_llm():
     return _llm
 
 
-def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: str) -> str:
+def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: str, drug_smiles: str = None) -> str:
     """
     Run pharmacogenomics simulation using LLM to predict drug effects.
     
@@ -65,7 +65,24 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     
     INPUT DATA:
     1. NEW DRUG: {drug_name}
-    2. SIMILAR KNOWN DRUGS: {similar_drugs}
+       SMILES Structure: {drug_smiles}
+       (Use the SMILES structure to understand the molecular structure and compare with similar drugs)
+    
+    2. SIMILAR KNOWN DRUGS (with structures):
+       {similar_drugs}
+       
+       IMPORTANT: Each similar drug entry includes:
+       - Drug Name
+       - SMILES structure (molecular formula)
+       - Known Side Effects
+       - Known Targets (enzymes/proteins)
+       
+       Use the SMILES structures to:
+       - Compare molecular similarity between the new drug and similar drugs
+       - Identify shared functional groups that might indicate CYP enzyme metabolism
+       - Recognize structural patterns that correlate with known CYP substrates
+       - Infer which CYP enzyme(s) likely metabolize the new drug based on structural similarity
+    
     3. PATIENT PROFILE: {patient_profile}
     
     RISK LEVEL DEFINITIONS (CRITICAL - USE THESE EXACTLY):
@@ -101,17 +118,34 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     - Ibuprofen (poor metabolizer): MEDIUM RISK - Reduced clearance, monitor for GI effects
     
     REASONING STEPS (follow this logic):
-    1. Identify which enzyme(s) metabolize the input drug:
-       - Check similar drugs for known CYP enzyme targets
-       - CYP2D6: Antidepressants, opioids, beta-blockers
-       - CYP2C19: Antiplatelets (clopidogrel), PPIs (omeprazole)
-       - CYP2C9: Anticoagulants (warfarin), NSAIDs (ibuprofen), anticonvulsants (phenytoin)
-    2. Check patient's metabolizer status for the relevant enzyme(s) from patient profile
-    3. Assess impact of poor/intermediate metabolizer status:
+    1. STRUCTURAL ANALYSIS:
+       - Compare the SMILES structure of the new drug with similar drugs' SMILES
+       - Identify shared functional groups, ring systems, or structural motifs
+       - Look for patterns that indicate CYP enzyme metabolism:
+         * Aromatic rings + specific substituents → CYP2D6 substrates
+         * Thiophene/benzimidazole rings → CYP2C19 substrates
+         * Coumarin-like structures → CYP2C9 substrates (warfarin-like)
+    
+    2. ENZYME IDENTIFICATION:
+       - Use structural similarity to similar drugs to infer CYP enzyme targets
+       - Check similar drugs' known targets/metabolism pathways
+       - CYP2D6: Antidepressants, opioids, beta-blockers (often have aromatic + basic nitrogen)
+       - CYP2C19: Antiplatelets (clopidogrel), PPIs (omeprazole) (often have benzimidazole/thiophene)
+       - CYP2C9: Anticoagulants (warfarin), NSAIDs (ibuprofen), anticonvulsants (phenytoin) (often have coumarin/aromatic acid)
+       - If structures are very similar to a known CYP substrate, infer the same enzyme pathway
+    
+    3. PATIENT GENETIC STATUS:
+       - Check patient's metabolizer status for the relevant enzyme(s) from patient profile
+       - Identify if patient is poor/intermediate/ultra-rapid metabolizer for the inferred enzyme
+    
+    4. IMPACT ASSESSMENT:
        - Activation-dependent (prodrug): Will patient get active metabolite? (Complete failure = HIGH, Reduced = MEDIUM)
        - Clearance-dependent (direct substrate): Will drug accumulate? (Severe accumulation = HIGH, Moderate = MEDIUM)
-    4. Consider severity: Can this be managed with dose adjustment? (Yes = MEDIUM, No = HIGH)
-    5. Classify risk level based on CPIC guidelines and severity assessment
+       - Consider structural similarity: If very similar to a high-risk drug, apply similar risk level
+    
+    5. RISK CLASSIFICATION:
+       - Consider severity: Can this be managed with dose adjustment? (Yes = MEDIUM, No = HIGH)
+       - Classify risk level based on CPIC guidelines, structural similarity, and severity assessment
     
     OUTPUT FORMAT (MUST FOLLOW EXACTLY):
     - RISK LEVEL: [Low/Medium/High] (choose ONE based on definitions above)
@@ -128,7 +162,7 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     """
     
     prompt = PromptTemplate(
-        input_variables=["drug_name", "similar_drugs", "patient_profile"],
+        input_variables=["drug_name", "drug_smiles", "similar_drugs", "patient_profile"],
         template=template
     )
     
@@ -137,6 +171,7 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     chain = prompt | llm
     response = chain.invoke({
         "drug_name": drug_name,
+        "drug_smiles": drug_smiles or "Not provided",
         "similar_drugs": "\n".join(similar_drugs),
         "patient_profile": patient_profile
     })

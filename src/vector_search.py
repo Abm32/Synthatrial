@@ -43,14 +43,15 @@ def find_similar_drugs(vector: List[int], top_k: int = 3) -> List[str]:
         top_k: Number of similar drugs to return (default: 3)
         
     Returns:
-        List of formatted drug strings: ["Drug Name (Side Effect: ...)", ...]
+        List of formatted drug strings with structure information:
+        ["Drug Name | SMILES: ... | Side Effects: ... | Targets: ...", ...]
     """
     # Safety check: if API key is missing, return mock data
     if not api_key or not index:
         return [
-            "Mock Drug A (Side Effect: Nausea)",
-            "Mock Drug B (Side Effect: Headache)",
-            "Mock Drug C (Side Effect: Dizziness)"
+            "Mock Drug A | SMILES: CC(=O)O | Side Effects: Nausea | Targets: Unknown",
+            "Mock Drug B | SMILES: CC(C)CC1=CC=C(C=C1)C(C)C(=O)O | Side Effects: Headache | Targets: Unknown",
+            "Mock Drug C | SMILES: CC1=CC=C(C=C1)C(=O)O | Side Effects: Dizziness | Targets: Unknown"
         ]
 
     try:
@@ -60,12 +61,17 @@ def find_similar_drugs(vector: List[int], top_k: int = 3) -> List[str]:
             include_metadata=True
         )
         
-        # Format the output for the LLM
+        # Format the output for the LLM with structure information
         found_drugs = []
         for match in results['matches']:
             drug_name = match['metadata'].get('name', 'Unknown')
+            smiles = match['metadata'].get('smiles', 'Not available')
             side_effects = match['metadata'].get('known_side_effects', 'None listed')
-            found_drugs.append(f"{drug_name} (Side Effects: {side_effects})")
+            targets = match['metadata'].get('targets', 'Unknown')
+            
+            # Format: Name | SMILES: ... | Side Effects: ... | Targets: ...
+            drug_info = f"{drug_name} | SMILES: {smiles} | Side Effects: {side_effects} | Targets: {targets}"
+            found_drugs.append(drug_info)
             
         return found_drugs
     except Exception as e:

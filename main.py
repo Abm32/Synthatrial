@@ -111,7 +111,7 @@ Examples:
     api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if api_key:
         try:
-            result = run_simulation(user_drug_name, similar_drugs, patient_profile)
+            result = run_simulation(user_drug_name, similar_drugs, patient_profile, drug_smiles=user_drug_smiles)
             print("\n" + "="*60)
             print("SIMULATION RESULT")
             print("="*60)
