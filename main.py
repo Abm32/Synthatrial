@@ -15,10 +15,25 @@ import os
 import argparse
 
 def main():
-    parser = argparse.ArgumentParser(description='Run pharmacogenomics simulation')
+    parser = argparse.ArgumentParser(
+        description='Run pharmacogenomics simulation with support for Big 3 enzymes (CYP2D6, CYP2C19, CYP2C9)',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Single chromosome (CYP2D6 only):
+  python main.py --vcf data/genomes/chr22.vcf.gz --drug-name Codeine
+  
+  # Multiple chromosomes (Big 3 enzymes):
+  python main.py --vcf data/genomes/chr22.vcf.gz --vcf-chr10 data/genomes/chr10.vcf.gz --drug-name Warfarin
+  
+  # Manual profile:
+  python main.py --cyp2d6-status poor_metabolizer --drug-name Tramadol
+        """
+    )
     parser.add_argument('--drug-smiles', default='CC(=O)Nc1ccc(O)cc1', help='SMILES string of drug')
     parser.add_argument('--drug-name', default='Synthetic-Para-101', help='Name of the drug')
-    parser.add_argument('--vcf', help='Path to VCF file (optional, uses VCF-derived patient if provided)')
+    parser.add_argument('--vcf', help='Path to VCF file for chromosome 22 (CYP2D6)')
+    parser.add_argument('--vcf-chr10', help='Path to VCF file for chromosome 10 (CYP2C9 and CYP2C19)')
     parser.add_argument('--sample-id', help='Sample ID from VCF file')
     parser.add_argument('--cyp2d6-status', 
                        choices=['extensive_metabolizer', 'intermediate_metabolizer', 
@@ -35,12 +50,19 @@ def main():
     
     # 2. Define Patient Profile
     if args.vcf and os.path.exists(args.vcf):
-        print(f"\n[VCF Mode] Using patient profile from VCF: {args.vcf}")
+        print(f"\n[VCF Mode] Using patient profile from VCF files")
+        print(f"  Chromosome 22: {args.vcf}")
+        if args.vcf_chr10:
+            print(f"  Chromosome 10: {args.vcf_chr10}")
+            print("  ✓ Big 3 enzymes enabled (CYP2D6, CYP2C19, CYP2C9)")
+        else:
+            print("  ⚠ Only CYP2D6 enabled (add --vcf-chr10 for Big 3 enzymes)")
+        
         try:
             if args.sample_id:
                 sample_id = args.sample_id
             else:
-                # Get first available sample
+                # Get first available sample from chromosome 22
                 sample_ids = get_sample_ids_from_vcf(args.vcf, limit=1)
                 if sample_ids:
                     sample_id = sample_ids[0]
@@ -53,7 +75,8 @@ def main():
                 sample_id,
                 age=45,
                 conditions=["Chronic Liver Disease (Mild)"],
-                lifestyle={'alcohol': 'Moderate', 'smoking': 'Non-smoker'}
+                lifestyle={'alcohol': 'Moderate', 'smoking': 'Non-smoker'},
+                vcf_path_chr10=args.vcf_chr10
             )
             print("  ✓ Generated patient profile from VCF")
         except Exception as e:

@@ -7,7 +7,11 @@ Includes mock mode for testing without API credentials.
 
 from typing import List
 import os
+from dotenv import load_dotenv
 from pinecone import Pinecone
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set your API Key in terminal: export PINECONE_API_KEY="your_key"
 # Or use python-dotenv to load from .env file
@@ -22,8 +26,12 @@ if api_key:
         # Connect to your index (Create one named 'drug-index' on Pinecone website first)
         # Ensure you create the index on the Pinecone dashboard with 2048 dimensions
         index = pc.Index("drug-index")
+        print("✓ Connected to Pinecone vector database")
     except Exception as e:
-        print(f"Warning: Could not initialize Pinecone: {e}")
+        print(f"⚠️  Warning: Could not initialize Pinecone: {e}")
+        print("   Falling back to mock data mode")
+else:
+    print("⚠️  PINECONE_API_KEY not found - using mock data mode")
 
 
 def find_similar_drugs(vector: List[int], top_k: int = 3) -> List[str]:

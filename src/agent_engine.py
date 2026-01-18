@@ -57,6 +57,12 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     
     TASK: Predict the physiological reaction of a specific patient to a new drug.
     
+    CONTEXT:
+    You have access to the patient's genetic profile for the "Big 3" Metabolic Enzymes:
+    1. CYP2D6 (Chromosome 22) - Metabolizes ~25% of drugs: Antidepressants, Antipsychotics, Codeine, Tramadol, Metoprolol
+    2. CYP2C19 (Chromosome 10) - Metabolizes Clopidogrel (Plavix), Omeprazole, and other proton pump inhibitors
+    3. CYP2C9 (Chromosome 10) - Metabolizes Warfarin (blood thinner), Ibuprofen, Phenytoin, and NSAIDs
+    
     INPUT DATA:
     1. NEW DRUG: {drug_name}
     2. SIMILAR KNOWN DRUGS: {similar_drugs}
@@ -64,43 +70,61 @@ def run_simulation(drug_name: str, similar_drugs: List[str], patient_profile: st
     
     RISK LEVEL DEFINITIONS (CRITICAL - USE THESE EXACTLY):
     - HIGH RISK: Severe consequences requiring alternative drug or contraindication
-      * Complete lack of efficacy (e.g., codeine → no conversion to active morphine)
-      * Significant toxicity risk (e.g., metoprolol → bradycardia from accumulation)
+      * Complete lack of efficacy (e.g., codeine → no conversion to active morphine via CYP2D6)
+      * Significant toxicity risk (e.g., metoprolol → bradycardia from accumulation via CYP2D6)
+      * Warfarin bleeding risk (CYP2C9 poor metabolizer)
       * CPIC recommendation: "Alternative drug recommended" or "Contraindicated"
     
     - MEDIUM RISK: Moderate consequences manageable with dose adjustment or monitoring
-      * Reduced efficacy but alternative dosing available (e.g., tramadol → dose adjustment)
+      * Reduced efficacy but alternative dosing available (e.g., tramadol → dose adjustment via CYP2D6)
       * Moderate accumulation manageable with monitoring
+      * Clopidogrel reduced activation (CYP2C19 poor metabolizer) - alternative antiplatelet available
       * CPIC recommendation: "Consider dose adjustment" or "Monitor closely"
     
     - LOW RISK: Minimal impact, standard dosing appropriate
-      * No CYP2D6 dependence (e.g., paracetamol metabolized by CYP1A2/CYP2E1)
+      * No CYP enzyme dependence (e.g., paracetamol metabolized by CYP1A2/CYP2E1, not Big 3)
       * Minimal genetic impact on drug response
       * CPIC recommendation: "No dose adjustment needed"
     
-    CPIC GUIDELINES REFERENCE (for known CYP2D6 substrates):
+    CPIC GUIDELINES REFERENCE (for known substrates):
+    CYP2D6:
     - Codeine (poor metabolizer): HIGH RISK - Alternative analgesic recommended (no activation to morphine)
     - Tramadol (poor metabolizer): MEDIUM RISK - Consider dose adjustment or alternative (reduced activation)
     - Metoprolol (poor metabolizer): HIGH RISK - Reduce dose by 50% (toxicity from accumulation)
     
+    CYP2C19:
+    - Clopidogrel (poor metabolizer): MEDIUM RISK - Reduced activation, alternative antiplatelet recommended
+    - Omeprazole (poor metabolizer): MEDIUM RISK - Reduced efficacy, dose adjustment or alternative PPI
+    
+    CYP2C9:
+    - Warfarin (poor metabolizer): HIGH RISK - Increased bleeding risk, reduce dose significantly
+    - Ibuprofen (poor metabolizer): MEDIUM RISK - Reduced clearance, monitor for GI effects
+    
     REASONING STEPS (follow this logic):
-    1. Identify if drug requires CYP2D6 for activation (prodrug) or clearance (direct substrate)
-    2. Assess impact of poor metabolizer status:
-       - Activation-dependent: Will patient get active metabolite? (Complete failure = HIGH, Reduced = MEDIUM)
-       - Clearance-dependent: Will drug accumulate? (Severe accumulation = HIGH, Moderate = MEDIUM)
-    3. Consider severity: Can this be managed with dose adjustment? (Yes = MEDIUM, No = HIGH)
-    4. Classify risk level based on CPIC guidelines and severity assessment
+    1. Identify which enzyme(s) metabolize the input drug:
+       - Check similar drugs for known CYP enzyme targets
+       - CYP2D6: Antidepressants, opioids, beta-blockers
+       - CYP2C19: Antiplatelets (clopidogrel), PPIs (omeprazole)
+       - CYP2C9: Anticoagulants (warfarin), NSAIDs (ibuprofen), anticonvulsants (phenytoin)
+    2. Check patient's metabolizer status for the relevant enzyme(s) from patient profile
+    3. Assess impact of poor/intermediate metabolizer status:
+       - Activation-dependent (prodrug): Will patient get active metabolite? (Complete failure = HIGH, Reduced = MEDIUM)
+       - Clearance-dependent (direct substrate): Will drug accumulate? (Severe accumulation = HIGH, Moderate = MEDIUM)
+    4. Consider severity: Can this be managed with dose adjustment? (Yes = MEDIUM, No = HIGH)
+    5. Classify risk level based on CPIC guidelines and severity assessment
     
     OUTPUT FORMAT (MUST FOLLOW EXACTLY):
     - RISK LEVEL: [Low/Medium/High] (choose ONE based on definitions above)
     - PREDICTED REACTION: [Description]
-    - BIOLOGICAL MECHANISM: [Why it happens]
+    - BIOLOGICAL MECHANISM: [Which enzyme(s) involved and why it happens]
     
     IMPORTANT: 
     - Always start your response with "RISK LEVEL: " followed by exactly one of: Low, Medium, or High
     - Use the risk level definitions above - do not overestimate risk
+    - Identify which CYP enzyme(s) are relevant (CYP2D6, CYP2C19, or CYP2C9)
     - For tramadol-like drugs (reduced activation but manageable), use MEDIUM, not HIGH
     - For codeine-like drugs (complete lack of activation), use HIGH
+    - For warfarin-like drugs (severe bleeding risk), use HIGH
     """
     
     prompt = PromptTemplate(
