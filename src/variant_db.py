@@ -207,46 +207,78 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
     """
     if not alleles_found:
         # No variants found = wild-type (*1/*1)
-        # Default: Extensive Metabolizer (Normal)
+        # Default: Extensive Metabolizer (Normal) - THIS IS THE CORRECT DEFAULT
+        # In pharmacogenomics, absence of known variants = normal function
         base_score = 1.0
         total_score = base_score * copy_number
     else:
         # Calculate Activity Score from found alleles
         gene_db = VARIANT_DB.get(gene, {})
         total_score = 0.0
+        matched_alleles_count = 0  # Track how many alleles actually matched our database
+        
+        # Check for structural variants first (deletions/duplications)
+        has_deletion = False
+        has_duplication = False
+        for allele in alleles_found:
+            if f"{gene}_DEL" in str(allele) or "DEL" in str(allele):
+                has_deletion = True
+                copy_number = 0  # Gene deletion
+            if f"{gene}_DUP" in str(allele) or "DUP" in str(allele):
+                has_duplication = True
+                copy_number = 3  # At least one extra copy
         
         # Sum activity scores from alleles
         for allele in alleles_found:
+            # Skip structural variant markers (handled above)
+            if f"{gene}_DEL" in str(allele) or f"{gene}_DUP" in str(allele):
+                continue
+                
             # Find variant info by allele name
+            matched = False
             for rsid, variant_info in gene_db.items():
                 if variant_info["allele"] == allele:
                     total_score += variant_info.get("activity_score", 0.0)
+                    matched_alleles_count += 1
+                    matched = True
                     break
+            
+            # If allele didn't match our database, it's an unknown variant
+            # Unknown variants should NOT affect phenotype (default to wild-type)
+            # We ignore unknown variants - they don't contribute to the score
         
-        # If no specific alleles matched, assume wild-type
-        if total_score == 0.0 and alleles_found:
-            # Found variants but couldn't match - conservative assumption
-            total_score = 1.0
+        # CRITICAL FIX: If NO alleles matched our database, default to Extensive Metabolizer
+        # This prevents "guilty until proven innocent" bug
+        # Rule: In pharmacogenomics, absence of evidence = normal function
+        if matched_alleles_count == 0 and not has_deletion:
+            # No known variants found - patient is wild-type (*1/*1)
+            # Default assumption: Extensive Metabolizer (Normal)
+            total_score = 1.0 * copy_number
         
-        # Adjust for copy number (duplications)
-        if copy_number > 2:
+        # Adjust for copy number (duplications/deletions)
+        if has_deletion or copy_number == 0:
+            # Gene deletion - no function
+            total_score = 0.0
+        elif has_duplication or copy_number > 2:
             # Duplication detected - multiply activity score
             total_score = total_score * (copy_number / 2.0)
-        elif copy_number == 0:
-            # Gene deletion
-            total_score = 0.0
         elif copy_number == 1:
             # Single copy (hemizygous)
             total_score = total_score / 2.0
     
     # Classify based on Activity Score
+    # CRITICAL: Default assumption is Extensive Metabolizer (normal function)
+    # Only classify as Poor/Intermediate if we have evidence of reduced/null function
+    # This prevents dangerous "guilty until proven innocent" classification
     if total_score > 2.0:
         return "ultra_rapid_metabolizer"
     elif total_score >= 1.5:
-        return "extensive_metabolizer"
+        return "extensive_metabolizer"  # Normal function (wild-type *1/*1 = 2.0)
     elif total_score >= 0.5:
         return "intermediate_metabolizer"
     else:
+        # Only return Poor Metabolizer if we have evidence (matched alleles with 0.0 score)
+        # If total_score is 0.0 but no alleles matched, we already set it to 2.0 above
         return "poor_metabolizer"
 
 

@@ -16,6 +16,7 @@ SynthaTrial/
 │   ├── vector_search.py      # Pinecone similarity search
 │   ├── agent_engine.py       # LLM-based pharmacogenomics simulation
 │   ├── vcf_processor.py      # VCF file processing and genetic analysis
+│   ├── variant_db.py         # Targeted variant lookup database (PharmVar Tier 1)
 │   └── chembl_processor.py   # ChEMBL database integration
 ├── tests/                    # Test suite
 │   ├── __init__.py
@@ -40,8 +41,8 @@ SynthaTrial/
 │       └── ALL.chr10.*.vcf.gz  # Chromosome 10 (CYP2C19, CYP2C9)
 └── docs/                    # Comprehensive documentation
     ├── README.md            # Documentation index
-    ├── setup.md             # Complete setup and installation guide
-    ├── usage.md             # Usage examples and CLI reference
+    ├── setup.md             # Complete setup and installation guide (includes quick start)
+    ├── usage.md             # Usage examples and CLI reference (includes run modes)
     ├── implementation.md    # Technical implementation details
     ├── troubleshooting.md   # Common issues and solutions
     ├── paper-review.md      # Research paper review and validation
@@ -60,9 +61,10 @@ SynthaTrial/
 ### Core Modules (`src/`)
 
 - **`input_processor.py`**: Validates SMILES strings and converts to 2048-bit Morgan fingerprints using RDKit
-- **`vector_search.py`**: Handles Pinecone vector database operations with mock mode fallback
-- **`agent_engine.py`**: LLM integration using LangChain and Google Gemini for pharmacogenomics analysis with enhanced prompting, structured output parsing, and comprehensive drug interaction predictions
-- **`vcf_processor.py`**: Processes VCF files to extract CYP enzyme variants and generate patient profiles. Supports multi-chromosome analysis (chromosomes 10 and 22) for Big 3 enzymes (CYP2D6, CYP2C19, CYP2C9) with Activity Score method for CPIC-compliant metabolizer status inference
+- **`vector_search.py`**: Handles Pinecone vector database operations with mock mode fallback and enhanced metadata (SMILES, targets, side effects)
+- **`agent_engine.py`**: LLM integration using LangChain and Google Gemini for pharmacogenomics analysis with enhanced CPIC guideline-based prompting, structural analysis using SMILES strings, and comprehensive drug interaction predictions
+- **`vcf_processor.py`**: Processes VCF files to extract CYP enzyme variants and generate patient profiles. Supports multi-chromosome analysis (chromosomes 10 and 22) for Big 3 enzymes (CYP2D6, CYP2C19, CYP2C9) with targeted variant lookup and Activity Score method for CPIC-compliant metabolizer status inference
+- **`variant_db.py`**: Targeted variant lookup database containing Tier 1 Clinical Variants (CPIC Level A) from PharmVar with activity scores and structural variant detection
 - **`chembl_processor.py`**: Extracts drug information from ChEMBL SQLite database
 
 ### Entry Points
@@ -89,14 +91,12 @@ SynthaTrial/
 ### Documentation (`docs/`)
 
 - **`README.md`**: Documentation index and navigation guide
-- **`setup.md`**: Complete setup and installation guide (consolidated from multiple setup files)
-- **`usage.md`**: Usage examples and CLI reference with comprehensive test cases
+- **`setup.md`**: Complete setup and installation guide (consolidated from multiple setup files, includes quick start)
+- **`usage.md`**: Usage examples and CLI reference with comprehensive test cases (includes run modes guide)
 - **`implementation.md`**: Technical implementation details and architecture (consolidated from multiple implementation files)
 - **`troubleshooting.md`**: Common issues and solutions (consolidated from multiple troubleshooting files)
 - **`paper-review.md`**: Research paper review and validation results (consolidated from multiple paper files)
 - **`concepts/`**: Conceptual explanations (pharmacogenomics, RAG, vector databases)
-
-**Documentation Restructure**: Streamlined from 25+ scattered files to 6 main files, eliminating duplication and improving navigation.
 
 ## File Naming Conventions
 

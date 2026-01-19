@@ -5,12 +5,13 @@
 - **Python 3.10+** - Primary language
 - **RDKit** - Molecular fingerprinting and cheminformatics
 - **Pinecone** - Vector similarity search database
-- **Google Gemini** - LLM for pharmacogenomics analysis (default: gemini-2.5-flash, supports gemini-1.5-flash, gemini-2.5-pro)
+- **Google Gemini** - LLM for pharmacogenomics analysis (default: gemini-2.5-flash, supports gemini-1.5-flash, gemini-2.5-pro, gemini-2.0-flash)
 - **LangChain** - LLM integration framework with enhanced RAG capabilities
 - **Streamlit** - Modern web interface with gradient styling and comprehensive UX
 - **SQLite** - ChEMBL database storage
 - **Multi-chromosome VCF processing** - Big 3 enzymes support (CYP2D6, CYP2C19, CYP2C9)
-- **Activity Score method** - CPIC/PharmVar guideline-based metabolizer status inference
+- **Targeted Variant Lookup** - Dictionary-based genotyping using Tier 1 Clinical Variants (CPIC Level A) from PharmVar
+- **Activity Score method** - CPIC/PharmVar guideline-based metabolizer status inference with structural variant detection
 
 ## Key Dependencies
 
@@ -20,6 +21,7 @@ pandas>=2.0.0
 scipy>=1.11.0
 scikit-learn>=1.3.0
 langchain>=0.1.0
+langchain-openai>=0.0.5
 langchain-google-genai>=0.1.0
 pinecone>=5.0.0
 psycopg2-binary>=2.9.0
@@ -39,7 +41,7 @@ conda activate synthatrial
 conda install -c conda-forge rdkit pandas scipy scikit-learn
 
 # Install other dependencies via pip
-pip install langchain langchain-google-genai pinecone-client python-dotenv streamlit
+pip install langchain langchain-openai langchain-google-genai pinecone-client python-dotenv streamlit
 ```
 
 ### Environment Variables
@@ -49,6 +51,7 @@ GOOGLE_API_KEY=your_gemini_api_key
 PINECONE_API_KEY=your_pinecone_api_key  # Optional (mock mode if missing)
 PINECONE_INDEX=drug-index
 GEMINI_MODEL=gemini-2.5-flash  # Optional, defaults to gemini-2.5-flash
+# Alternative models: gemini-2.5-pro, gemini-2.0-flash, gemini-2.0-flash-exp
 ```
 
 ## Common Commands
@@ -124,7 +127,9 @@ python scripts/list_models_v2.py
 
 - **Modular design**: Separate processors for input, vector search, VCF, ChEMBL, and AI engine
 - **Multi-chromosome support**: Processes chromosome 22 (CYP2D6) and chromosome 10 (CYP2C19, CYP2C9) for Big 3 enzyme coverage
-- **Activity Score method**: CPIC/PharmVar guideline-based metabolizer status inference
+- **Targeted Variant Lookup**: Dictionary-based genotyping using specific rsIDs from PharmVar database instead of naive variant counting
+- **Activity Score method**: CPIC/PharmVar guideline-based metabolizer status inference with structural variant detection (CNVs)
+- **Enhanced LLM prompting**: CPIC guideline-based prompting with structural analysis using SMILES strings
 - **Lazy initialization**: LLM and database connections initialized when needed
 - **Mock mode support**: Graceful fallback when API keys are missing with realistic example data
 - **Error handling**: Comprehensive error handling with user-friendly messages
@@ -143,3 +148,6 @@ python scripts/list_models_v2.py
 - **Documentation**: Use streamlined structure in `docs/` - single files for setup, usage, implementation, troubleshooting, and paper review
 - **Testing**: Run validation tests after changes (`python tests/validation_tests.py`)
 - **Performance**: Use benchmarking tools to measure system performance (`python scripts/benchmark_performance.py`)
+- **Variant Lookup**: Use targeted variant lookup from `src/variant_db.py` instead of naive variant counting
+- **Multi-chromosome**: Test with both single chromosome and Big 3 enzymes modes for comprehensive coverage
+- **VCF Integrity**: Always verify VCF file integrity using `python scripts/check_vcf_integrity.py`

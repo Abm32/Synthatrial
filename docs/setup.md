@@ -2,6 +2,50 @@
 
 Complete setup guide for the SynthaTrial pharmacogenomics platform.
 
+## Quick Start
+
+### 1. Activate Environment
+```bash
+conda activate synthatrial
+# Or create new environment:
+# conda create -n synthatrial python=3.10 -y
+# conda activate synthatrial
+```
+
+### 2. Install Dependencies
+```bash
+# Install RDKit (required for molecular fingerprints)
+conda install -c conda-forge rdkit -y
+
+# Install other dependencies
+pip install pandas scipy scikit-learn langchain langchain-openai pinecone-client langchain-google-genai psycopg2-binary python-dotenv streamlit
+```
+
+### 3. Set API Keys
+Create a `.env` file in the project root:
+```bash
+GOOGLE_API_KEY="your_google_api_key"
+PINECONE_API_KEY="your_pinecone_api_key"
+```
+
+### 4. Quick Test (Big 3 Enzymes - Recommended)
+```bash
+# Download VCF files (optional - for real genetic data)
+mkdir -p data/genomes && cd data/genomes
+wget https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz
+wget https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz
+cd ../..
+
+# Test with Warfarin (CYP2C9 substrate)
+python main.py \
+  --vcf data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
+  --vcf-chr10 data/genomes/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
+  --drug-name Warfarin \
+  --drug-smiles "CC(=O)CC(c1ccc(OC)cc1)c1c(O)c2ccccc2oc1=O"
+```
+
+---
+
 ## Prerequisites
 
 - **Python 3.10+**
