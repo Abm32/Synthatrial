@@ -4,8 +4,8 @@ Comprehensive review of the research paper for publication readiness.
 
 ## Executive Summary
 
-**Status**: ✅ **READY FOR SUBMISSION**  
-**Grade**: A / A- (8.5-9/10)  
+**Status**: ✅ **READY FOR SUBMISSION**
+**Grade**: A / A- (8.5-9/10)
 **Overall Assessment**: Publication ready with excellent technical accuracy
 
 ---

@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  synthatrial:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    container_name: synthatrial-prod
+    ports:
+      - "80:8501" # Map to port 80 for production
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX=${PINECONE_INDEX:-drug-index}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - ./data:/app/data:ro # Read-only data mount
+      - ./logs:/app/logs:rw # Writable logs
+      - ./.env:/app/.env:ro # Read-only environment
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - synthatrial-prod-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+        reservations:
+          memory: 2G
+          cpus: "1.0"
+
+  # Reverse proxy with enhanced SSL support
+  nginx:
+    image: nginx:alpine
+    container_name: synthatrial-nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:rw
+      - ./docker/nginx-ssl-setup.sh:/etc/nginx/nginx-ssl-setup.sh:ro
+      - ./docker/nginx-entrypoint.sh:/docker-entrypoint.sh:ro
+      - ./docker/ssl:/etc/nginx/ssl:rw
+    depends_on:
+      - synthatrial
+    restart: always
+    networks:
+      - synthatrial-prod-network
+    profiles:
+      - nginx
+    entrypoint: ["/docker-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  synthatrial-prod-network:
+    driver: bridge

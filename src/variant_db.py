@@ -17,166 +17,166 @@ VARIANT_DB = {
             "allele": "*4",
             "impact": "Null",
             "name": "Splicing Defect (1846G>A)",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs1065852": {
             "allele": "*10",
             "impact": "Reduced",
             "name": "100C>T",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs16947": {
             "allele": "*2",
             "impact": "Normal",
             "name": "2850C>T (Common)",
-            "activity_score": 1.0
+            "activity_score": 1.0,
         },
         "rs28371725": {
             "allele": "*41",
             "impact": "Reduced",
             "name": "2988G>A",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs35742686": {
             "allele": "*3",
             "impact": "Null",
             "name": "2549delA",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs5030655": {
             "allele": "*6",
             "impact": "Null",
             "name": "1707delT",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs5030865": {
             "allele": "*9",
             "impact": "Reduced",
             "name": "2613_2615delAAG",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs28371706": {
             "allele": "*17",
             "impact": "Reduced",
             "name": "1023C>T",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         # Gene deletion (structural variant)
         "CYP2D6_DEL": {
             "allele": "*5",
             "impact": "Null",
             "name": "Gene Deletion",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         # Gene duplication (structural variant)
         "CYP2D6_DUP": {
             "allele": "*1xN",
             "impact": "Increased",
             "name": "Gene Duplication",
-            "activity_score": 1.0  # Multiplied by copy number
-        }
+            "activity_score": 1.0,  # Multiplied by copy number
+        },
     },
     "CYP2C19": {
         "rs4244285": {
             "allele": "*2",
             "impact": "Null",
             "name": "Splicing Defect (681G>A)",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs4986893": {
             "allele": "*3",
             "impact": "Null",
             "name": "Stop Codon (636G>A)",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs12248560": {
             "allele": "*17",
             "impact": "Increased",
             "name": "Promoter Variant (-806C>T)",
-            "activity_score": 1.0
+            "activity_score": 1.0,
         },
         "rs28399504": {
             "allele": "*4",
             "impact": "Null",
             "name": "1A>G",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs56337013": {
             "allele": "*8",
             "impact": "Null",
             "name": "358T>C",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs72552267": {
             "allele": "*9",
             "impact": "Reduced",
             "name": "431G>A",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         # Gene deletion
         "CYP2C19_DEL": {
             "allele": "*5",
             "impact": "Null",
             "name": "Gene Deletion",
-            "activity_score": 0.0
-        }
+            "activity_score": 0.0,
+        },
     },
     "CYP2C9": {
         "rs1799853": {
             "allele": "*2",
             "impact": "Reduced",
             "name": "Arg144Cys (430C>T)",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs1057910": {
             "allele": "*3",
             "impact": "Reduced",
             "name": "Ile359Leu (1075A>C)",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs28371686": {
             "allele": "*5",
             "impact": "Reduced",
             "name": "Asp360Glu",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs9332131": {
             "allele": "*6",
             "impact": "Null",
             "name": "818delA",
-            "activity_score": 0.0
+            "activity_score": 0.0,
         },
         "rs28371685": {
             "allele": "*8",
             "impact": "Reduced",
             "name": "449G>A",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         "rs7900194": {
             "allele": "*11",
             "impact": "Reduced",
             "name": "1003C>T",
-            "activity_score": 0.5
+            "activity_score": 0.5,
         },
         # Gene deletion
         "CYP2C9_DEL": {
             "allele": "*5",
             "impact": "Null",
             "name": "Gene Deletion",
-            "activity_score": 0.0
-        }
-    }
+            "activity_score": 0.0,
+        },
+    },
 }
 
 
 def get_activity_score_for_allele(gene: str, rsid: str) -> float:
     """
     Get the activity score for a specific variant.
-    
+
     Args:
         gene: Gene name (CYP2D6, CYP2C19, CYP2C9)
         rsid: Variant rsID or structural variant identifier
-        
+
     Returns:
         Activity score (0.0 to 1.0), or None if variant not found
     """
@@ -187,21 +187,23 @@ def get_activity_score_for_allele(gene: str, rsid: str) -> float:
     return None
 
 
-def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 2) -> str:
+def get_phenotype_prediction(
+    gene: str, alleles_found: list, copy_number: int = 2
+) -> str:
     """
     Predicts metabolizer status based on found alleles using Activity Score method.
-    
+
     Based on CPIC/PharmVar guidelines:
     - AS = 0: Poor Metabolizer
     - AS = 0.5-1.0: Intermediate Metabolizer
     - AS = 1.5-2.0: Extensive Metabolizer (Normal)
     - AS > 2.0: Ultra-Rapid Metabolizer (requires duplication)
-    
+
     Args:
         gene: Gene name (CYP2D6, CYP2C19, CYP2C9)
         alleles_found: List of allele identifiers found (e.g., ['*4', '*10'])
         copy_number: Gene copy number (default 2, can be 0, 1, 2, 3+ for duplications)
-        
+
     Returns:
         Metabolizer status string
     """
@@ -215,8 +217,10 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
         # Calculate Activity Score from found alleles
         gene_db = VARIANT_DB.get(gene, {})
         total_score = 0.0
-        matched_alleles_count = 0  # Track how many alleles actually matched our database
-        
+        matched_alleles_count = (
+            0  # Track how many alleles actually matched our database
+        )
+
         # Check for structural variants first (deletions/duplications)
         has_deletion = False
         has_duplication = False
@@ -227,13 +231,13 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
             if f"{gene}_DUP" in str(allele) or "DUP" in str(allele):
                 has_duplication = True
                 copy_number = 3  # At least one extra copy
-        
+
         # Sum activity scores from alleles
         for allele in alleles_found:
             # Skip structural variant markers (handled above)
             if f"{gene}_DEL" in str(allele) or f"{gene}_DUP" in str(allele):
                 continue
-                
+
             # Find variant info by allele name
             matched = False
             for rsid, variant_info in gene_db.items():
@@ -242,11 +246,11 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
                     matched_alleles_count += 1
                     matched = True
                     break
-            
+
             # If allele didn't match our database, it's an unknown variant
             # Unknown variants should NOT affect phenotype (default to wild-type)
             # We ignore unknown variants - they don't contribute to the score
-        
+
         # CRITICAL FIX: If NO alleles matched our database, default to Extensive Metabolizer
         # This prevents "guilty until proven innocent" bug
         # Rule: In pharmacogenomics, absence of evidence = normal function
@@ -254,7 +258,7 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
             # No known variants found - patient is wild-type (*1/*1)
             # Default assumption: Extensive Metabolizer (Normal)
             total_score = 1.0 * copy_number
-        
+
         # Adjust for copy number (duplications/deletions)
         if has_deletion or copy_number == 0:
             # Gene deletion - no function
@@ -265,7 +269,7 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
         elif copy_number == 1:
             # Single copy (hemizygous)
             total_score = total_score / 2.0
-    
+
     # Classify based on Activity Score
     # CRITICAL: Default assumption is Extensive Metabolizer (normal function)
     # Only classify as Poor/Intermediate if we have evidence of reduced/null function
@@ -285,11 +289,11 @@ def get_phenotype_prediction(gene: str, alleles_found: list, copy_number: int = 
 def get_variant_info(gene: str, rsid: str) -> dict:
     """
     Get detailed information about a specific variant.
-    
+
     Args:
         gene: Gene name
         rsid: Variant rsID
-        
+
     Returns:
         Dictionary with variant information, or None if not found
     """
@@ -300,10 +304,10 @@ def get_variant_info(gene: str, rsid: str) -> dict:
 def list_critical_variants(gene: str) -> list:
     """
     List all critical variants for a given gene.
-    
+
     Args:
         gene: Gene name
-        
+
     Returns:
         List of rsIDs for that gene
     """

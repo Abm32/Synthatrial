@@ -1,0 +1,75 @@
+# SynthaTrial - In Silico Pharmacogenomics Platform
+# Multi-stage Docker build for production deployment
+
+# Stage 1: Base image with conda and system dependencies
+FROM continuumio/miniconda3:latest as base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV CONDA_ENV_NAME=synthatrial
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create conda environment with Python 3.10
+RUN conda create -n $CONDA_ENV_NAME python=3.10 -y
+
+# Activate conda environment for subsequent commands
+SHELL ["conda", "run", "-n", "synthatrial", "/bin/bash", "-c"]
+
+# Install RDKit and scientific packages via conda (required for molecular fingerprints)
+RUN conda install -n $CONDA_ENV_NAME -c conda-forge \
+    rdkit \
+    pandas \
+    scipy \
+    scikit-learn \
+    numpy \
+    -y
+
+# Stage 2: Application dependencies
+FROM base as dependencies
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install Python dependencies via pip
+RUN conda run -n $CONDA_ENV_NAME pip install --no-cache-dir -r requirements.txt
+
+# Stage 3: Application code
+FROM dependencies as application
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p data/genomes data/chembl logs
+
+# Set proper permissions
+RUN chmod +x scripts/*.py
+
+# Create non-root user for security
+RUN useradd -m -u 1000 synthatrial && \
+    chown -R synthatrial:synthatrial /app
+USER synthatrial
+
+# Stage 4: Production image
+FROM application as production
+
+# Expose ports
+EXPOSE 8501 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+# Default command (can be overridden)
+CMD ["conda", "run", "-n", "synthatrial", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

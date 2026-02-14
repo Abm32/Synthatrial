@@ -36,10 +36,10 @@ from rdkit.Chem import AllChem
 def get_drug_fingerprint(smiles_string):
     # Convert SMILES to molecule object
     mol = Chem.MolFromSmiles(smiles_string)
-    
+
     # Generate 2048-bit Morgan fingerprint (radius=2)
     fingerprint = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
-    
+
     # Convert to numpy array
     return np.array(fingerprint)
 ```
@@ -109,20 +109,20 @@ CYP_GENE_LOCATIONS = {
 def extract_cyp_variants(vcf_path, gene='CYP2D6', sample_limit=None):
     gene_loc = CYP_GENE_LOCATIONS[gene]
     variants = []
-    
+
     with gzip.open(vcf_path, 'rt') as f:
         for line in f:
             if line.startswith('#CHROM'):
                 # Parse sample names from header
                 sample_names = line.strip().split('\t')[9:]
                 continue
-            
+
             if not line.startswith('#'):
                 # Parse variant line
                 variant = parse_vcf_line(line)
                 if is_in_gene_region(variant, gene_loc):
                     variants.append(variant)
-    
+
     return variants
 ```
 
@@ -156,14 +156,14 @@ def infer_metabolizer_status(variants, sample_id, gene='CYP2D6'):
     # Simplified heuristic based on variant count
     non_ref_count = count_non_reference_alleles(variants, sample_id)
     functional_variants = count_functional_variants(variants, sample_id)
-    
+
     # Calculate activity score (simplified)
     activity_score = 2.0  # Base score
     if functional_variants >= 2:
         activity_score -= 1.0
     elif functional_variants == 1:
         activity_score -= 0.5
-    
+
     # Classify based on activity score
     if activity_score > 2.0:
         return 'ultra_rapid_metabolizer'
@@ -187,21 +187,21 @@ def generate_patient_profile_from_vcf(vcf_path, sample_id, vcf_path_chr10=None):
     # Extract CYP2D6 from chromosome 22
     cyp2d6_variants = extract_cyp_variants(vcf_path, 'CYP2D6')
     cyp2d6_status = infer_metabolizer_status(cyp2d6_variants, sample_id, 'CYP2D6')
-    
+
     # Extract CYP2C19 and CYP2C9 from chromosome 10 (if provided)
     if vcf_path_chr10:
         cyp2c19_variants = extract_cyp_variants(vcf_path_chr10, 'CYP2C19')
         cyp2c9_variants = extract_cyp_variants(vcf_path_chr10, 'CYP2C9')
-        
+
         cyp2c19_status = infer_metabolizer_status(cyp2c19_variants, sample_id, 'CYP2C19')
         cyp2c9_status = infer_metabolizer_status(cyp2c9_variants, sample_id, 'CYP2C9')
-    
+
     # Build genetics text
     genetics_parts = []
     if cyp2d6_status != 'extensive_metabolizer':
         genetics_parts.append(f"CYP2D6 {cyp2d6_status.replace('_', ' ').title()}")
     # ... similar for other enzymes
-    
+
     return formatted_profile
 ```
 
@@ -229,10 +229,10 @@ def generate_patient_profile_from_vcf(vcf_path, sample_id, vcf_path_chr10=None):
 
 **Join Path**:
 ```sql
-molecule_dictionary 
+molecule_dictionary
   → compound_structures (molregno)
-  → activities (molregno) 
-  → assays (assay_id) 
+  → activities (molregno)
+  → assays (assay_id)
   → target_dictionary (tid)
 ```
 
@@ -244,7 +244,7 @@ molecule_dictionary
 
 **SQL Query**:
 ```sql
-SELECT DISTINCT 
+SELECT DISTINCT
     md.molregno,
     md.pref_name,
     md.max_phase,
@@ -266,7 +266,7 @@ LIMIT ?
 
 **SQL Query**:
 ```sql
-SELECT DISTINCT 
+SELECT DISTINCT
     td.pref_name as target_name,
     td.organism,
     td.target_type,
@@ -484,7 +484,7 @@ def validate_smiles(smiles_string):
 def validate_vcf_file(vcf_path):
     if not os.path.exists(vcf_path):
         raise FileNotFoundError(f"VCF file not found: {vcf_path}")
-    
+
     # Check file integrity
     try:
         with gzip.open(vcf_path, 'rt') as f:
@@ -535,7 +535,7 @@ def test_end_to_end_workflow():
         vcf_path="test_data/chr22.vcf.gz",
         sample_id="HG00096"
     )
-    
+
     assert "RISK LEVEL:" in result
     assert result.startswith("RISK LEVEL: High")  # Expected for poor metabolizer
 ```

@@ -109,7 +109,7 @@ conda list
    ```bash
    # Option 1: Environment variable
    export GOOGLE_API_KEY="your-api-key"
-   
+
    # Option 2: .env file
    echo "GOOGLE_API_KEY=your-api-key" >> .env
    ```
@@ -169,11 +169,11 @@ conda list
 2. **Download Missing Files**:
    ```bash
    mkdir -p data/genomes
-   
+
    # Chromosome 22 (CYP2D6)
    curl -L https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
      -o data/genomes/chr22.vcf.gz
-   
+
    # Chromosome 10 (CYP2C19, CYP2C9)
    curl -L https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
      -o data/genomes/chr10.vcf.gz
@@ -204,7 +204,7 @@ conda list
    ```bash
    # Delete corrupted file
    rm data/genomes/chr22.vcf.gz
-   
+
    # Re-download with resume capability
    wget -c https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
      -O data/genomes/chr22.vcf.gz
@@ -508,7 +508,7 @@ git pull  # Get latest fixes
    ```bash
    # Test fingerprint generation
    python -c "from src.input_processor import get_drug_fingerprint; print(len(get_drug_fingerprint('CC(=O)Nc1ccc(O)cc1')))"
-   
+
    # Test vector search
    python -c "from src.vector_search import find_similar_drugs; from src.input_processor import get_drug_fingerprint; print(find_similar_drugs(get_drug_fingerprint('CC(=O)Nc1ccc(O)cc1')))"
    ```

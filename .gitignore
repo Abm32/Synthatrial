@@ -12,6 +12,22 @@ venv/
 
 # Jupyter / notebooks
 .ipynb_checkpoints/
+notebooks/
+
+# Docker
+.docker/
+docker-compose.override.yml
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Docker volumes and logs
+logs/
+*.log
+
+# SSL certificates (keep private)
+docker/ssl/
 
 # Data / large files
 data/genomes/
@@ -29,6 +45,48 @@ data/chembl/
 Thumbs.db
 .idea/
 .vscode/
-anukriti.tex
-docs/paper/paper_review.md
-docs/paper
+
+# LaTeX files
+*.tex
+*.pdf
+*.aux
+*.log
+*.out
+*.toc
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+
+
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE files
+.kiro/specs/
+*.backup
+
+# Environment files
+.env.*
+!.env.example
+
+# Testing and Reports
+.hypothesis/
+htmlcov/
+.pytest_cache/
+test-results/
+tests/reports/
+build_reports/
+deployment_reports/
+monitoring_reports/
+*_report.json
+*.html
+
+# Project specific
+dev_setup_report.json
+drawings.html

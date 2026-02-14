@@ -1,0 +1,85 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Documentation build
+docs/_build/
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# Environment variables
+.env.local
+.env.development
+.env.test
+.env.production
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Large data files (will be mounted as volumes)
+data/genomes/*.vcf.gz
+data/chembl/*.tar.gz
+data/chembl/chembl_34_sqlite/
+
+# IDE files
+.kiro/
+*.tex
+*.pdf
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore

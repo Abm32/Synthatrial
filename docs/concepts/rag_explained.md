@@ -179,15 +179,15 @@ Be specific and reference the similar drugs when relevant.
 RISK LEVEL: Medium
 
 PREDICTED REACTION:
-Based on similarity to Paracetamol and patient's CYP2D6 poor metabolizer 
+Based on similarity to Paracetamol and patient's CYP2D6 poor metabolizer
 status, there is moderate risk of:
 - Reduced drug clearance (CYP2D6 is involved in metabolism)
 - Potential accumulation in poor metabolizers
-- Similar to Paracetamol, liver toxicity is a concern given patient's 
+- Similar to Paracetamol, liver toxicity is a concern given patient's
   chronic liver disease
 
 BIOLOGICAL MECHANISM:
-The drug is a CYP2D6 substrate (similar to Paracetamol). In poor 
+The drug is a CYP2D6 substrate (similar to Paracetamol). In poor
 metabolizers (CYP2D6*4/*4), the enzyme has reduced activity, leading to:
 - Slower drug clearance
 - Higher drug concentrations
