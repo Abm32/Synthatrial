@@ -2,7 +2,7 @@
 
 **Version 0.4 (Beta)**
 
-Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, **deterministic CPIC/PharmVar-aligned CYP2C19 and Warfarin** (CYP2C9 + VKORC1; curated tables in `data/pgx/`), RAG with similar drugs, and LLM-generated risk and mechanism. Benchmark-validated (CYP2C19 + Warfarin); PGx data is versioned in repo (no live API at runtime).
+Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, **deterministic CPIC/PharmVar-aligned CYP2C19 and Warfarin** (CYP2C9 + VKORC1; curated tables in `data/pgx/`), **drug-triggered PGx** (genetics summary shows only drug-relevant genes: Warfarin → CYP2C9 + VKORC1; Statins → SLCO1B1; Clopidogrel → CYP2C19), RAG with similar drugs, and LLM-generated risk and mechanism. Benchmark-validated (CYP2C19 + Warfarin + SLCO1B1); PGx data is versioned in repo (no live API at runtime).
 
 > **⚠️ Not for clinical use**
 > SynthaTrial is a **research prototype**. Outputs are synthetic and must **not** be used for clinical decision-making, diagnosis, or treatment. Not medical advice.
@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 Create `.env`: `GOOGLE_API_KEY=...` (required), `PINECONE_API_KEY=...` (optional, mock if missing), `PINECONE_INDEX=drug-index`.
 
-**Run:** `streamlit run app.py` (UI) or `python main.py --drug-name Warfarin` (CLI). For VCF-based profiles, put `.vcf.gz` files in `data/genomes/` (see [Data](#data-vcf--chembl)) or pass `--vcf` / `--vcf-chr10`.
+**Run:** `streamlit run app.py` (UI) or `python main.py --drug-name Warfarin` (CLI). The **drug name** drives which PGx genes appear in the genetics summary (see [Drug-triggered PGx](#drug-triggered-pgx)). For VCF-based profiles, put `.vcf.gz` files in `data/genomes/` (see [Data](#data-vcf--chembl)) or pass `--vcf` / `--vcf-chr10`.
 
 ---
 
@@ -123,7 +123,11 @@ Output: risk level, interpretation, + RAG context (similar drugs, genetics, sour
 
 **Trust boundaries:** Deterministic PGx core (CPIC/PharmVar) + generative interpretation layer (LLM). Allele calling and phenotype translation use versioned tables only; the LLM adds free-text interpretation and is audited via RAG context.
 
-**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12), VKORC1 (chr16). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are **deterministic** and CPIC/PharmVar-aligned via `src/allele_caller.py` (`interpret_cyp2c19(patient_variants)` for simple rsid→alt; VCF pipeline uses same data). **Warfarin** is integrated end-to-end: CYP2C9 (chr10) + VKORC1 (chr16) variants are merged in the profile builder, and `interpret_warfarin_from_vcf()` adds a deterministic line to the patient genetics string (e.g. `Warfarin PGx: CYP2C9 *1/*2 + VKORC1 GA → Moderate dose reduction recommended`). The agent and Streamlit UI receive this in the genetics summary; the Patient Genetics tab shows a dedicated Warfarin PGx subsection when present. Data: CYP2C9 PharmVar TSV + VKORC1 rs9923231 + `data/pgx/cpic/warfarin_response.json`; caller in `src/warfarin_caller.py`; benchmark: `python main.py --benchmark warfarin_examples.json`. **SLCO1B1** (statin myopathy): deterministic rs4149056 (c.521T>C) via `src/slco1b1_caller.py`; phenotype (TT/TC/CC) always computed from chr12; the *Statin PGx* line is **drug-gated** (appended only when the drug is a statin, e.g. simvastatin, atorvastatin), per CPIC. Benchmark: `python main.py --benchmark slco1b1_examples.json`. Otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)` and `VKORC1 GG`. PGx data is versioned in repo; see `data/pgx/sources.md`. *Current allele calling supports single-variant defining alleles (*2, *3, *17). Multi-variant haplotypes are future work.*
+### Drug-triggered PGx
+
+The genetics summary is **drug-aware**. A central trigger map (`src/pgx_triggers.py`: `DRUG_GENE_TRIGGERS`) defines which genes are shown for which drug. Only drug-relevant PGx lines are included: **Warfarin** → CYP2C9 + VKORC1 (Warfarin PGx line only); **Statins** (simvastatin, atorvastatin, rosuvastatin, etc.) → SLCO1B1 (Statin PGx line only); **Clopidogrel** → CYP2C19. For other drugs (e.g. Paracetamol), only generic genes (e.g. CYP2D6) appear—no Warfarin or Statin PGx blocks. This matches CPIC/PharmGKB-style clinical alerting.
+
+**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12), VKORC1 (chr16). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are **deterministic** and CPIC/PharmVar-aligned via `src/allele_caller.py` (`interpret_cyp2c19(patient_variants)` for simple rsid→alt; VCF pipeline uses same data). **Warfarin:** CYP2C9 (chr10) + VKORC1 (chr16) are merged in the profile builder; `interpret_warfarin_from_vcf()` adds a deterministic line **only when the drug is warfarin** (triggered by `DRUG_GENE_TRIGGERS`). Data: CYP2C9 PharmVar TSV + VKORC1 rs9923231 + `data/pgx/cpic/warfarin_response.json`; caller in `src/warfarin_caller.py`; benchmark: `python main.py --benchmark warfarin_examples.json`. **SLCO1B1** (statin myopathy): deterministic rs4149056 (c.521T>C) via `src/slco1b1_caller.py`; the *Statin PGx* line is appended **only when the drug is a statin** (triggered by `DRUG_GENE_TRIGGERS`). Benchmark: `python main.py --benchmark slco1b1_examples.json`. **CYP2C19** is shown in the gene list only when triggered (e.g. clopidogrel) or when no drug is specified. Otherwise fallback to `src/variant_db.py`. PGx data is versioned in repo; see `data/pgx/sources.md`. *Current allele calling supports single-variant defining alleles (*2, *3, *17). Multi-variant haplotypes are future work.*
 
 **RAG transparency:** API response and UI show `similar_drugs_used`, `genetics_summary`, `context_sources` so predictions are auditable. For a step-by-step pipeline and how results are verified, see [How it works](#how-it-works-pipeline-and-verification) below.
 
@@ -137,7 +141,7 @@ Output: risk level, interpretation, + RAG context (similar drugs, genetics, sour
 2. **Drug fingerprint** — SMILES is converted to a 2048-bit Morgan fingerprint (RDKit). That vector is used to find **similar drugs** in ChEMBL (Pinecone) or a mock list.
 3. **Patient genetics** — Two paths:
    - **Manual:** The profile is whatever you set in the UI or CLI (e.g. “CYP2C19 Intermediate Metabolizer”).
-   - **VCF:** For each gene (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1, VKORC1), the pipeline loads the right chromosome VCF (chr22, chr10, chr2, chr12, chr16), extracts variants in the gene region, and **calls star alleles** (or VKORC1 genotype) from those variants. **Warfarin:** CYP2C9 + VKORC1 variants are merged and `interpret_warfarin_from_vcf()` adds a deterministic dose recommendation line to the profile.
+   - **VCF:** For each gene (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1, VKORC1), the pipeline loads the right chromosome VCF (chr22, chr10, chr2, chr12, chr16), extracts variants, and **calls star alleles** (or VKORC1 genotype). The **genetics summary is drug-triggered**: only genes relevant to the selected drug are shown. Warfarin → CYP2C9 + VKORC1 (Warfarin PGx line); Statins → SLCO1B1 (Statin PGx line); Clopidogrel → CYP2C19. See `src/pgx_triggers.py` for the trigger map.
 4. **Allele calling (CYP2C19 example)** — If `data/pgx/` exists for a gene (e.g. CYP2C19):
    - **PharmVar table** (`cyp2c19_alleles.tsv`): rsID + alt allele → star allele (*2, *3, *17, etc.).
    - **CPIC table** (`cyp2c19_phenotypes.json`): diplotype (e.g. *1/*2) → phenotype label (e.g. “Intermediate Metabolizer”).
@@ -184,10 +188,12 @@ SynthaTrial/
 │   ├── input_processor.py   # SMILES → fingerprint
 │   ├── vector_search.py     # Pinecone / mock
 │   ├── agent_engine.py      # LLM simulation
+│   ├── pgx_triggers.py      # Drug → gene trigger map (CPIC-style; Warfarin, Statins, Clopidogrel)
 │   ├── allele_caller.py     # Deterministic CPIC/PharmVar (CYP2C19, CYP2C9)
 │   ├── warfarin_caller.py   # Warfarin: interpret_warfarin, interpret_warfarin_from_vcf
-│   ├── vcf_processor.py    # VCF parsing, allele call, profile (incl. Warfarin line)
-│   ├── variant_db.py       # Allele map, phenotype prediction
+│   ├── slco1b1_caller.py    # SLCO1B1 (statin myopathy) rs4149056 interpretation
+│   ├── vcf_processor.py     # VCF parsing, allele call, drug-triggered profile
+│   ├── variant_db.py        # Allele map, phenotype prediction
 │   └── chembl_processor.py  # ChEMBL integration
 ├── scripts/
 │   ├── data_initializer.py  # Download VCF/ChEMBL
