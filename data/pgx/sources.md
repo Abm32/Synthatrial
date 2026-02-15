@@ -8,8 +8,8 @@ Pharmacogenomics data is openly available but **fragmented**:
 
 | Source        | What it provides              | API?                    | How we use it                          |
 |---------------|-------------------------------|-------------------------|----------------------------------------|
-| **PharmVar**  | Star-allele definitions       | Download / API docs      | Curated TSV in `pharmvar/`             |
-| **CPIC**      | Diplotype → phenotype, guidelines | REST API + file server | Curated JSON in `cpic/`                |
+| **PharmVar**  | Star-allele definitions       | Curated downloads (no stable REST API) | Downloaded, converted to TSV in `pharmvar/` |
+| **CPIC**      | Diplotype → phenotype, guidelines | Guideline PDFs and tables (downloadable); no full allele-calling API | Curated JSON in `cpic/`                |
 | **PharmGKB**  | Drug–gene annotations         | API (may need registration) | Reference only                        |
 | **Ensembl**   | rsID → position, consequences | Open REST API           | Optional variant metadata              |
 | **dbSNP**     | Variant definitions           | NCBI API                | Optional verification                  |
@@ -21,8 +21,7 @@ Pharmacogenomics data is openly available but **fragmented**:
 ## PharmVar (allele definitions)
 
 - **Site:** https://www.pharmvar.org/
-- **Downloads:** https://www.pharmvar.org/download — TSV, VCF, FASTA per gene.
-- **API:** Programmatic access documented at https://www.pharmvar.org/documentation (for building/updating tables, not at runtime).
+- **Downloads:** https://www.pharmvar.org/download — curated allele definition files (TSV, VCF, FASTA per gene). PharmVar does not provide a stable public REST API; we download and convert to our TSV format.
 
 Our format: `pharmvar/<gene>_alleles.tsv` with columns `allele`, `rsid`, `alt`, `function`. *1 is default (no row). Source and version should be recorded below when you refresh.
 
@@ -30,9 +29,8 @@ Our format: `pharmvar/<gene>_alleles.tsv` with columns `allele`, `rsid`, `alt`, 
 
 ## CPIC (phenotype translation)
 
-- **Guidelines:** https://cpicpgx.org/guidelines/
-- **Files:** https://files.cpicpgx.org/data/report/current/ (e.g. allele summary, gene-specific tables).
-- **API:** https://api.cpicpgx.org — REST API for alleles, genes, guidelines (for building/updating tables).
+- **Guidelines:** https://cpicpgx.org/guidelines/ — guideline PDFs and phenotype translation tables (downloadable).
+- **Files:** https://files.cpicpgx.org/data/report/current/ (e.g. allele summary, gene-specific tables). CPIC does not provide an official API for star-allele definitions; their JSON resources are limited and not designed for automated allele calling. We use one-time downloaded/curated tables.
 
 Our format: `cpic/<gene>_phenotypes.json` — diplotype string → phenotype label (e.g. `"*1/*2"` → `"Intermediate Metabolizer"`). Document CPIC guideline version and date when you refresh.
 

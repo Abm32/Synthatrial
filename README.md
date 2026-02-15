@@ -1,13 +1,13 @@
 # SynthaTrial — In Silico Pharmacogenomics Platform
 
-**Version 0.2 (Beta)**
+**Version 0.3 (Beta)**
 
-Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, PharmVar/CPIC-style interpretation, RAG with similar drugs, and LLM-generated risk and mechanism.
+Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, **deterministic CPIC/PharmVar-aligned CYP2C19** (curated tables in `data/pgx/`), RAG with similar drugs, and LLM-generated risk and mechanism. Benchmark-validated; PGx data is versioned in repo (no live API at runtime).
 
 > **⚠️ Not for clinical use**
 > SynthaTrial is a **research prototype**. Outputs are synthetic and must **not** be used for clinical decision-making, diagnosis, or treatment. Not medical advice.
 >
-> **Limitations:** Incomplete allele coverage; no copy-number/structural variants (CNVs) for CYP2D6 yet; phenotype and drug guidance are guideline-derived (CPIC/PharmVar) where data files exist but are not a substitute for clinical testing.
+> **Limitations:** Incomplete allele coverage; no copy-number/structural variants (CNVs) for CYP2D6 yet; current allele calling supports single-variant defining alleles (e.g. CYP2C19*2)—multi-variant haplotypes and CNVs are future work; phenotype and drug guidance are guideline-derived (CPIC/PharmVar) where data files exist but are not a substitute for clinical testing.
 
 ---
 
@@ -64,6 +64,8 @@ python scripts/data_initializer.py --vcf chr22 chr10
 
 Any `.vcf.gz` in `data/genomes/` whose filename contains the chromosome (e.g. `chr22`, `chr10`) is **auto-discovered**. No need to pass `--vcf` if files are there.
 
+**PGx curated data (`data/pgx/`):** Allele definitions (PharmVar-style TSV) and diplotype→phenotype (CPIC JSON) are stored in the repo for reproducibility. There is no single open API for star-allele calling; we use one-time curated tables. See `data/pgx/sources.md` for PharmVar, CPIC, Ensembl, dbSNP and versioning. Validate: `python scripts/update_pgx_data.py --validate`. Optional refresh: `python scripts/update_pgx_data.py --gene cyp2c19` (then update `sources.md` and commit).
+
 ---
 
 ## Deployment (Docker)
@@ -85,7 +87,8 @@ Without any data, the app runs in manual profile mode with mock drug search. For
 | `python api.py` | FastAPI backend (port 8000); UI can call `/analyze`. Interactive API docs: http://localhost:8000/docs |
 | `python main.py --drug-name <name>` | CLI simulation (auto-discovers VCFs in `data/genomes/`) |
 | `python main.py --vcf <path> [--vcf-chr10 <path>] --drug-name Warfarin` | CLI with explicit VCFs |
-| `python main.py --benchmark cpic_examples.json` | Evaluation: predicted vs expected phenotype, match % |
+| `python main.py --benchmark cpic_examples.json` | Evaluation: predicted vs expected phenotype, match %. Supports allele-based (`expected_phenotype`) and CYP2C19 variant-based (`variants` + `expected` display). |
+| `python scripts/update_pgx_data.py --validate` | Validate `data/pgx/` TSV and JSON. Use `--gene cyp2c19` for optional refresh. |
 | `python tests/quick_test.py` | Quick integration test |
 | `python tests/validation_tests.py` | Full test suite |
 
@@ -111,9 +114,48 @@ User Input (Drug SMILES + Patient Profile)
 Output: risk level, interpretation, + RAG context (similar drugs, genetics, sources)
 ```
 
-**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are deterministic and CPIC/PharmVar-aligned via `src/allele_caller.py`; otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)`.
+**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are **deterministic** and CPIC/PharmVar-aligned via `src/allele_caller.py` (`interpret_cyp2c19(patient_variants)` for simple rsid→alt; VCF pipeline uses same data). Otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)`. PGx data is versioned in repo; see `data/pgx/sources.md`.
 
-**RAG transparency:** API response and UI show `similar_drugs_used`, `genetics_summary`, `context_sources` so predictions are auditable.
+**RAG transparency:** API response and UI show `similar_drugs_used`, `genetics_summary`, `context_sources` so predictions are auditable. For a step-by-step pipeline and how results are verified, see [How it works](#how-it-works-pipeline-and-verification) below.
+
+---
+
+## How it works (pipeline and verification)
+
+### End-to-end flow
+
+1. **Input** — You provide a **drug** (name or SMILES) and a **patient**: either manual genetics (e.g. pick CYP2D6/CYP2C19 status in the UI) or a **VCF file + sample ID** so the pipeline derives genetics from the genome.
+2. **Drug fingerprint** — SMILES is converted to a 2048-bit Morgan fingerprint (RDKit). That vector is used to find **similar drugs** in ChEMBL (Pinecone) or a mock list.
+3. **Patient genetics** — Two paths:
+   - **Manual:** The profile is whatever you set in the UI or CLI (e.g. “CYP2C19 Intermediate Metabolizer”).
+   - **VCF:** For each gene (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1), the pipeline loads the right chromosome VCF (chr22, chr10, chr2, chr12), extracts variants in the gene region, and **calls star alleles** from those variants.
+4. **Allele calling (CYP2C19 example)** — If `data/pgx/` exists for a gene (e.g. CYP2C19):
+   - **PharmVar table** (`cyp2c19_alleles.tsv`): rsID + alt allele → star allele (*2, *3, *17, etc.).
+   - **CPIC table** (`cyp2c19_phenotypes.json`): diplotype (e.g. *1/*2) → phenotype label (e.g. “Intermediate Metabolizer”).
+   - From the VCF we get **rsid → (ref, alt, genotype)** per sample. The caller counts how many copies of each defining alt the sample has, builds a diplotype (e.g. *1/*2), and looks up the phenotype in the CPIC table. This is **deterministic** and **sourced** (no LLM). *Current implementation supports single-variant defining alleles (e.g. CYP2C19*2). Multi-variant haplotypes and CNVs are future work.*
+   - If `data/pgx/` is missing for that gene, the pipeline falls back to `variant_db.py` (activity scores and internal mapping).
+5. **Profile string** — The pipeline builds a single text profile (e.g. “CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC), CYP2D6 Extensive Metabolizer, …”) and passes it to the **agent**.
+6. **Agent (LLM)** — The model receives: drug name/SMILES, **similar drugs** from the vector search, and the **patient genetics** summary. It returns a risk level and free-text interpretation. The UI/API also return **RAG context** (similar drugs used, genetics summary, sources) so the result is auditable.
+7. **Output** — Risk level, clinical interpretation, and (in UI/API) the three pipeline tabs: Patient Genetics, Similar Drugs Retrieved, Predicted Response + Risk.
+
+### How verification works
+
+- **Benchmark (`cpic_examples.json`)** — Each row has a gene, either **alleles** (e.g. *1/*2) or **variants** (e.g. rs4244285 → A), and an **expected** phenotype. The runner:
+  - For **CYP2C19 + simple variants + “expected” (display):** calls `interpret_cyp2c19(variants)` and compares the returned phenotype string to `expected`.
+  - For **allele-based or VCF-style variants:** uses `get_phenotype_prediction(gene, alleles)` or `call_gene_from_variants()` and compares **normalized** phenotype to `expected_phenotype`.
+  - Reports **match %** (e.g. 11/11). This proves that allele calling and phenotype translation match the intended CPIC/PharmVar logic.
+- **PGx data checks** — `python scripts/update_pgx_data.py --validate` checks that every TSV in `data/pgx/pharmvar/` has the required columns (allele, rsid, alt, function) and every JSON in `data/pgx/cpic/` is a valid diplotype→phenotype map. No runtime API is used for calling; all logic uses these versioned tables so runs are **reproducible**.
+
+### Summary
+
+| Stage            | What happens | Verified by |
+|------------------|--------------|------------|
+| Drug → fingerprint | RDKit Morgan | — |
+| Similar drugs    | Vector search (ChEMBL or mock) | Shown in RAG context |
+| VCF → variants   | Parse by gene region (chr2/10/12/22) | — |
+| Variants → alleles | PharmVar TSV (or variant_db fallback) | Benchmark (expected vs predicted phenotype) |
+| Alleles → phenotype | CPIC JSON (or activity-score logic) | Same benchmark |
+| Phenotype + drugs → risk | LLM with RAG | RAG fields in output |
 
 ---
 
@@ -176,7 +218,10 @@ SynthaTrial/
 
 - 1000 Genomes: https://www.internationalgenome.org/
 - ChEMBL: https://www.ebi.ac.uk/chembl/
-- PharmVar: https://www.pharmvar.org/
+- PharmVar: https://www.pharmvar.org/ — curated allele definition files (downloaded and converted to TSV for SynthaTrial). No stable public REST API.
+- CPIC: https://cpicpgx.org/ — guideline PDFs and phenotype translation tables (downloadable). No full runtime allele-calling API.
+- PharmGKB: https://www.pharmgkb.org/ (drug–gene annotations)
+- Ensembl REST: https://rest.ensembl.org/ (variant metadata, e.g. rsID lookup)
 - RDKit: https://www.rdkit.org/
 
 ---
