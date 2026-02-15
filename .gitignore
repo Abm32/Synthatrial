@@ -90,3 +90,6 @@ monitoring_reports/
 # Project specific
 dev_setup_report.json
 drawings.html
+
+# Unzipped PGx pack (use data/pgx and scripts from repo)
+synthatrial_pgx_v0_3/
