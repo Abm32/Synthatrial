@@ -137,6 +137,7 @@ SynthaTrial/
 │   └── chembl_processor.py # ChEMBL integration
 ├── scripts/
 │   ├── data_initializer.py  # Download VCF/ChEMBL
+│   ├── update_pgx_data.py   # Validate or refresh data/pgx (PharmVar/CPIC)
 │   ├── download_vcf_files.py
 │   ├── setup_pinecone_index.py
 │   └── ingest_chembl_to_pinecone.py
@@ -158,6 +159,7 @@ SynthaTrial/
 - **Pinecone/index:** Optional; app uses mock drugs if not set. To use ChEMBL: `python scripts/setup_pinecone_index.py` then `python scripts/ingest_chembl_to_pinecone.py`
 - **VCF not found:** Ensure files are in `data/genomes/` with chromosome in filename (e.g. `chr22`, `chr10`) or pass `--vcf` / `--vcf-chr10`.
 - **Benchmark:** `python main.py --benchmark cpic_examples.json` (no VCF needed).
+- **PGx data:** Curated tables in `data/pgx/` (see `data/pgx/sources.md`). Validate: `python scripts/update_pgx_data.py --validate`.
 
 ---
 
