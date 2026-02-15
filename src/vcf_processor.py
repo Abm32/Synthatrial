@@ -11,7 +11,7 @@ import os
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
-from .allele_caller import alt_dosage, _genotype_to_alleles, call_gene_from_variants
+from .allele_caller import _genotype_to_alleles, call_gene_from_variants
 from .exceptions import VCFProcessingError
 from .variant_db import (
     VARIANT_DB,
@@ -112,6 +112,24 @@ CYP_ACTIVITY_SCORES = {
     "CYP2C19": CYP2C19_ACTIVITY_SCORES,
     "CYP2C9": CYP2C9_ACTIVITY_SCORES,
 }
+
+
+def alt_dosage(gt: str):
+    """
+    Convert VCF genotype into ALT allele dosage.
+
+    Examples:
+        0/0 → 0 copies ALT
+        0/1 → 1 copy ALT
+        1/1 → 2 copies ALT
+    """
+    if gt in ("0/0", "0|0"):
+        return 0
+    if gt in ("0/1", "1/0", "0|1", "1|0"):
+        return 1
+    if gt in ("1/1", "1|1"):
+        return 2
+    return None
 
 
 def validate_vcf(file_content: str) -> Tuple[bool, str]:
