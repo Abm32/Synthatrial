@@ -1,8 +1,8 @@
 # SynthaTrial — In Silico Pharmacogenomics Platform
 
-**Version 0.3 (Beta)**
+**Version 0.4 (Beta)**
 
-Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, **deterministic CPIC/PharmVar-aligned CYP2C19** (curated tables in `data/pgx/`), RAG with similar drugs, and LLM-generated risk and mechanism. Benchmark-validated; PGx data is versioned in repo (no live API at runtime).
+Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, **deterministic CPIC/PharmVar-aligned CYP2C19 and Warfarin** (CYP2C9 + VKORC1; curated tables in `data/pgx/`), RAG with similar drugs, and LLM-generated risk and mechanism. Benchmark-validated (CYP2C19 + Warfarin); PGx data is versioned in repo (no live API at runtime).
 
 > **⚠️ Not for clinical use**
 > SynthaTrial is a **research prototype**. Outputs are synthetic and must **not** be used for clinical decision-making, diagnosis, or treatment. Not medical advice.
@@ -56,9 +56,12 @@ Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`
 - chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 
 **One-time setup (local):**
+
 ```bash
 mkdir -p data/genomes data/chembl
 python scripts/data_initializer.py --vcf chr22 chr10
+# Optional: chr16 for Warfarin VKORC1
+# python scripts/data_initializer.py --vcf chr16
 # Optional ChEMBL:
 # curl -L -o data/chembl/chembl_34_sqlite.tar.gz https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_34/chembl_34_sqlite.tar.gz
 # tar -xzf data/chembl/chembl_34_sqlite.tar.gz -C data/chembl
@@ -66,7 +69,7 @@ python scripts/data_initializer.py --vcf chr22 chr10
 
 Any `.vcf.gz` in `data/genomes/` whose filename contains the chromosome (e.g. `chr22`, `chr10`) is **auto-discovered**. No need to pass `--vcf` if files are there.
 
-**PGx curated data (`data/pgx/`):** Allele definitions (PharmVar-style TSV) and diplotype→phenotype (CPIC JSON) are stored in the repo for reproducibility. There is no single open API for star-allele calling; we use one-time curated tables. See `data/pgx/sources.md` for PharmVar, CPIC, Ensembl, dbSNP and versioning. Validate: `python scripts/update_pgx_data.py --validate`. Optional refresh: `python scripts/update_pgx_data.py --gene cyp2c19` (then update `sources.md` and commit). If you have **synthatrial_pgx_v0_3.zip** (PGx data pack), unzip and copy `data/pgx` and `scripts` into the repo root, then run `python scripts/update_pgx_data.py --validate`.
+**PGx curated data (`data/pgx/`):** Allele definitions (PharmVar-style TSV) and diplotype→phenotype or genotype→recommendation (CPIC-style JSON) are stored in the repo for reproducibility. Genes covered: **CYP2C19** (alleles + phenotypes), **CYP2C9** and **VKORC1** (Warfarin: `warfarin_response.json`). There is no single open API for star-allele calling; we use one-time curated tables. See `data/pgx/sources.md` for PharmVar, CPIC, Ensembl, dbSNP and versioning. Validate: `python scripts/update_pgx_data.py --validate`. Optional refresh: `python scripts/update_pgx_data.py --gene cyp2c19` (then update `sources.md` and commit). If you have a **PGx data pack** (e.g. synthatrial_pgx_v0_3 or warfarin_pgx_pack), unzip and copy `data/pgx` and `scripts` into the repo root, then run `python scripts/update_pgx_data.py --validate`.
 
 ---
 
@@ -75,7 +78,7 @@ Any `.vcf.gz` in `data/genomes/` whose filename contains the chromosome (e.g. `c
 Data is not in the image. Two options:
 
 1. **Volume mount:** Pre-download into `./data/genomes` and `./data/chembl` on the host; production Compose mounts `./data` → `/app/data`.
-2. **Download in container:** Start once, then e.g. `docker exec <container> python scripts/data_initializer.py --vcf chr22 chr10`. Use a **named volume** for `/app/data` so data persists.
+2. **Download in container:** Start once, then e.g. `docker exec <container> python scripts/data_initializer.py --vcf chr22 chr10` (add `chr16` for Warfarin VKORC1 if needed). Use a **named volume** for `/app/data` so data persists.
 
 Without any data, the app runs in manual profile mode with mock drug search. For Render: use `render.yaml` and set env vars (e.g. `GOOGLE_API_KEY`) in the dashboard.
 
@@ -133,7 +136,7 @@ Output: risk level, interpretation, + RAG context (similar drugs, genetics, sour
 2. **Drug fingerprint** — SMILES is converted to a 2048-bit Morgan fingerprint (RDKit). That vector is used to find **similar drugs** in ChEMBL (Pinecone) or a mock list.
 3. **Patient genetics** — Two paths:
    - **Manual:** The profile is whatever you set in the UI or CLI (e.g. “CYP2C19 Intermediate Metabolizer”).
-   - **VCF:** For each gene (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1), the pipeline loads the right chromosome VCF (chr22, chr10, chr2, chr12), extracts variants in the gene region, and **calls star alleles** from those variants.
+   - **VCF:** For each gene (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1, VKORC1), the pipeline loads the right chromosome VCF (chr22, chr10, chr2, chr12, chr16), extracts variants in the gene region, and **calls star alleles** (or VKORC1 genotype) from those variants. **Warfarin:** CYP2C9 + VKORC1 variants are merged and `interpret_warfarin_from_vcf()` adds a deterministic dose recommendation line to the profile.
 4. **Allele calling (CYP2C19 example)** — If `data/pgx/` exists for a gene (e.g. CYP2C19):
    - **PharmVar table** (`cyp2c19_alleles.tsv`): rsID + alt allele → star allele (*2, *3, *17, etc.).
    - **CPIC table** (`cyp2c19_phenotypes.json`): diplotype (e.g. *1/*2) → phenotype label (e.g. “Intermediate Metabolizer”).
@@ -149,7 +152,8 @@ Output: risk level, interpretation, + RAG context (similar drugs, genetics, sour
   - For **CYP2C19 + simple variants + “expected” (display):** calls `interpret_cyp2c19(variants)` and compares the returned phenotype string to `expected`.
   - For **allele-based or VCF-style variants:** uses `get_phenotype_prediction(gene, alleles)` or `call_gene_from_variants()` and compares **normalized** phenotype to `expected_phenotype`.
   - Reports **match %** (e.g. 11/11). This proves that allele calling and phenotype translation match the intended CPIC/PharmVar logic.
-- **PGx data checks** — `python scripts/update_pgx_data.py --validate` checks that every TSV in `data/pgx/pharmvar/` has the required columns (allele, rsid, alt, function) and every JSON in `data/pgx/cpic/` is a valid diplotype→phenotype map. No runtime API is used for calling; all logic uses these versioned tables so runs are **reproducible**.
+- **Warfarin benchmark (`warfarin_examples.json`)** — Rows have `variants` (rs1799853, rs1057910, rs9923231) and `expected` recommendation text. The runner calls `interpret_warfarin(variants)` and compares `recommendation` to `expected`. Reports match % (e.g. 3/3).
+- **PGx data checks** — `python scripts/update_pgx_data.py --validate` checks that every TSV in `data/pgx/pharmvar/` has the required columns (allele tables: allele, rsid, alt, function; variant tables: variant, rsid, risk_allele, effect) and every JSON in `data/pgx/cpic/` is a valid key→recommendation or diplotype→phenotype map. No runtime API is used for calling; all logic uses these versioned tables so runs are **reproducible**.
 
 ### Summary
 
@@ -157,9 +161,9 @@ Output: risk level, interpretation, + RAG context (similar drugs, genetics, sour
 |------------------|--------------|------------|
 | Drug → fingerprint | RDKit Morgan | — |
 | Similar drugs    | Vector search (ChEMBL or mock) | Shown in RAG context |
-| VCF → variants   | Parse by gene region (chr2/10/12/22) | — |
-| Variants → alleles | PharmVar TSV (or variant_db fallback) | Benchmark (expected vs predicted phenotype) |
-| Alleles → phenotype | CPIC JSON (or activity-score logic) | Same benchmark |
+| VCF → variants   | Parse by gene region (chr2/10/12/16/22) | — |
+| Variants → alleles / genotype | PharmVar TSV + CPIC/warfarin JSON (or variant_db fallback) | `cpic_examples.json`, `warfarin_examples.json` |
+| Alleles → phenotype / recommendation | CPIC JSON or warfarin_response.json | Same benchmarks |
 | Phenotype + drugs → risk | LLM with RAG | RAG fields in output |
 
 ---
@@ -172,16 +176,18 @@ SynthaTrial/
 ├── app.py              # Streamlit UI
 ├── main.py             # CLI + --benchmark
 ├── api.py              # FastAPI /analyze
-├── cpic_examples.json  # CPIC-style benchmark examples
+├── cpic_examples.json      # CPIC-style benchmark examples
+├── warfarin_examples.json  # Warfarin PGx benchmark (CYP2C9 + VKORC1)
 ├── requirements.txt
 ├── src/
 │   ├── input_processor.py   # SMILES → fingerprint
 │   ├── vector_search.py     # Pinecone / mock
 │   ├── agent_engine.py      # LLM simulation
-│   ├── allele_caller.py     # Deterministic CPIC/PharmVar calling (CYP2C19 first)
-│   ├── vcf_processor.py     # VCF parsing, allele call, profile
-│   ├── variant_db.py        # Allele map, phenotype prediction
-│   └── chembl_processor.py # ChEMBL integration
+│   ├── allele_caller.py     # Deterministic CPIC/PharmVar (CYP2C19, CYP2C9)
+│   ├── warfarin_caller.py   # Warfarin: interpret_warfarin, interpret_warfarin_from_vcf
+│   ├── vcf_processor.py    # VCF parsing, allele call, profile (incl. Warfarin line)
+│   ├── variant_db.py       # Allele map, phenotype prediction
+│   └── chembl_processor.py  # ChEMBL integration
 ├── scripts/
 │   ├── data_initializer.py  # Download VCF/ChEMBL
 │   ├── update_pgx_data.py   # Validate or refresh data/pgx (PharmVar/CPIC)
@@ -205,8 +211,8 @@ SynthaTrial/
 - **GOOGLE_API_KEY missing:** Set in `.env` or environment; required for LLM.
 - **Pinecone/index:** Optional; app uses mock drugs if not set. To use ChEMBL: `python scripts/setup_pinecone_index.py` then `python scripts/ingest_chembl_to_pinecone.py`
 - **VCF not found:** Ensure files are in `data/genomes/` with chromosome in filename (e.g. `chr22`, `chr10`) or pass `--vcf` / `--vcf-chr10`.
-- **Benchmark:** `python main.py --benchmark cpic_examples.json` (no VCF needed).
-- **PGx data:** Curated tables in `data/pgx/` (see `data/pgx/sources.md`). Validate: `python scripts/update_pgx_data.py --validate`.
+- **Benchmark:** `python main.py --benchmark cpic_examples.json` or `python main.py --benchmark warfarin_examples.json` (no VCF needed).
+- **PGx data:** Curated tables in `data/pgx/` (CYP2C19, CYP2C9, VKORC1, warfarin_response). See `data/pgx/sources.md`. Validate: `python scripts/update_pgx_data.py --validate`.
 
 ---
 
