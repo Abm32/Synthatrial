@@ -37,7 +37,7 @@ VCF and ChEMBL are **not** in the repo (gitignored). The app runs without them (
 | **chr10** | CYP2C19, CYP2C9 | ~700 MB | Recommended (Big 3) |
 | **chr2** | UGT1A1 | ~1.2 GB | Optional |
 | **chr12** | SLCO1B1 | ~700 MB | Optional |
-| **chr6, chr11, chr19** | *(none yet)* | ~915 MB, ~700 MB, ~330 MB | Downloadable; not used for profiles (reserved) |
+| **chr6, chr11, chr19** | Not yet implemented (reserved for future PGx genes) | ~915 MB, ~700 MB, ~330 MB | Downloadable; not used for profiles |
 | **ChEMBL** | Drug similarity (Pinecone) | ~1–2 GB | Optional (mock if missing) |
 
 If you have chr6, chr11, or chr19 in `data/genomes/`, they are discovered but **not used**—no genes are mapped to them. Only chr2, chr10, chr12, chr22 drive the patient genetics pipeline.
@@ -113,6 +113,8 @@ User Input (Drug SMILES + Patient Profile)
     ↓
 Output: risk level, interpretation, + RAG context (similar drugs, genetics, sources)
 ```
+
+**Trust boundaries:** Deterministic PGx core (CPIC/PharmVar) + generative interpretation layer (LLM). Allele calling and phenotype translation use versioned tables only; the LLM adds free-text interpretation and is audited via RAG context.
 
 **Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are **deterministic** and CPIC/PharmVar-aligned via `src/allele_caller.py` (`interpret_cyp2c19(patient_variants)` for simple rsid→alt; VCF pipeline uses same data). Otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)`. PGx data is versioned in repo; see `data/pgx/sources.md`.
 
@@ -218,10 +220,11 @@ SynthaTrial/
 
 - 1000 Genomes: https://www.internationalgenome.org/
 - ChEMBL: https://www.ebi.ac.uk/chembl/
-- PharmVar: https://www.pharmvar.org/ — curated allele definition files (downloaded and converted to TSV for SynthaTrial). No stable public REST API.
-- CPIC: https://cpicpgx.org/ — guideline PDFs and phenotype translation tables (downloadable). No full runtime allele-calling API.
+- PharmVar: https://www.pharmvar.org/ (curated allele definition downloads)
+- CPIC: https://cpicpgx.org/ (guidelines + phenotype translation tables)
 - PharmGKB: https://www.pharmgkb.org/ (drug–gene annotations)
-- Ensembl REST: https://rest.ensembl.org/ (variant metadata, e.g. rsID lookup)
+- Ensembl REST: https://rest.ensembl.org/ (variant metadata, rsID lookup)
+- dbSNP: https://www.ncbi.nlm.nih.gov/snp/
 - RDKit: https://www.rdkit.org/
 
 ---

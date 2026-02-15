@@ -1,6 +1,29 @@
-# PGx data sources and versioning
+# PGx Data Sources (Versioned)
 
 SynthaTrial uses **one-time curated tables** (versioned in the repo), not live APIs, for star-allele calling. This keeps results reproducible and avoids dependency on external services at runtime.
+
+---
+
+## Data provenance (this repo)
+
+Record source, download date, and version when you add or refresh files. Update this section and the table below when you pull new data.
+
+### CYP2C19 Alleles
+
+- **Source:** PharmVar CYP2C19 allele definitions (curated downloads)
+- **File:** `pharmvar/cyp2c19_alleles.tsv`
+- **Content:** Minimal clinically relevant set (*2, *3, *17); *1 is default (no row).
+- **Downloaded:** 2026-02-15 (initial)
+- **Version:** PharmVar-based minimal set (no PharmVar release version tagged; update when refreshed from https://www.pharmvar.org/download )
+
+### CYP2C19 Phenotype Translation
+
+- **Source:** CPIC CYP2C19 guideline supplement (genotype–phenotype tables)
+- **File:** `cpic/cyp2c19_phenotypes.json`
+- **Content:** Diplotype → phenotype label (e.g. *1/*2 → Intermediate Metabolizer).
+- **Version:** CPIC guideline–aligned (update to e.g. “CPIC 2023 update” when refreshed from https://cpicpgx.org/guidelines/ )
+
+---
 
 ## Why no single “PGx API”?
 
@@ -49,13 +72,13 @@ Our format: `cpic/<gene>_phenotypes.json` — diplotype string → phenotype lab
 
 ---
 
-## Versioning (this repo)
+## Versioning table
 
-When you update `pharmvar/` or `cpic/` files, record here:
+When you update `pharmvar/` or `cpic/` files, update the provenance section above and this table:
 
 | Data set      | Source / version | Date updated |
 |---------------|------------------|--------------|
-| cyp2c19_alleles.tsv | PharmVar minimal set (*2, *3, *17) | (initial) |
-| cyp2c19_phenotypes.json | CPIC genotype–phenotype mapping | (initial) |
+| cyp2c19_alleles.tsv | PharmVar CYP2C19 (minimal set) | 2026-02-15 |
+| cyp2c19_phenotypes.json | CPIC CYP2C19 guideline (phenotype translation) | 2026-02-15 |
 
-Run `python scripts/update_pgx_data.py --validate` to check existing files. Use `scripts/update_pgx_data.py` (and its `--help`) to refresh from upstream when needed; then update this table and commit.
+Run `python scripts/update_pgx_data.py --validate` to check existing files. Use `scripts/update_pgx_data.py` (and its `--help`) to refresh from upstream when needed; then update provenance, this table, and commit.
