@@ -243,52 +243,48 @@ with tab1:
                         genetics_summary = data.get("genetics_summary") or ""
                         context_sources = data.get("context_sources") or ""
                         
-                        # --- Results View ---
+                        # --- Results: 3 pipeline tabs ---
                         st.markdown("---")
                         st.markdown("## 📋 Simulation Results")
-                        
-                        # RAG context (transparent reasoning)
-                        with st.expander("🔬 Prediction context (how this was derived)", expanded=True):
-                            context_parts = []
-                            if genetics_summary:
-                                context_parts.append(f"**Genetics used:** {genetics_summary}")
-                            if similar_drugs_used:
-                                context_parts.append(f"**Similar drugs retrieved:** {', '.join(similar_drugs_used)}")
-                            if context_sources:
-                                context_parts.append(f"**Sources:** {context_sources}")
-                            if context_parts:
-                                st.markdown("Prediction based on: " + " | ".join(context_parts))
-                                if genetics_summary and similar_drugs_used:
-                                    st.caption(f"e.g. \"Prediction based on {genetics_summary} + similarity to {similar_drugs_used[0] if similar_drugs_used else 'retrieved drugs'}\"")
-                            else:
-                                st.caption("Context not provided by this API version.")
-                        
-                        # Metrics Row
-                        m1, m2, m3 = st.columns(3)
-                        with m1:
-                            st.metric("Risk Level", risk_level, delta="High" if risk_level=="Low" else "-High", delta_color="inverse")
-                        with m2:
-                            st.metric("Confidence Score", "95%", "+2%")
-                        with m3:
-                            st.metric("Processing Time", "1.2s")
+                        st.caption("Pipeline: Genetics → Similar drugs → Predicted response")
+                        pipe_tab1, pipe_tab2, pipe_tab3 = st.tabs([
+                            "🧬 Patient Genetics",
+                            "💊 Similar Drugs Retrieved",
+                            "📋 Predicted Response + Risk",
+                        ])
 
-                        # Safety reminder with results
-                        st.warning(SAFETY_DISCLAIMER)
-                        # Detailed Report Card
-                        st.markdown('<div class="card">', unsafe_allow_html=True)
-                        st.markdown(f"### Analysis for **{drug_name}**")
-                        
-                        # Style the risk
-                        risk_class = f"risk-{risk_level.lower()}" if risk_level else ""
-                        st.markdown(f"Risk Assessment: <span class='{risk_class}'>{risk_level}</span>", unsafe_allow_html=True)
-                        
-                        st.markdown("#### Clinical Interpretation")
-                        st.markdown(result)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        
-                        # Success Animation
-                        if lottie_success:
-                            st_lottie(lottie_success, height=100, key="success", loop=False)
+                        with pipe_tab1:
+                            st.markdown("### Genetics used in this prediction")
+                            if genetics_summary:
+                                st.info(genetics_summary)
+                            st.markdown("#### Full patient profile")
+                            st.text(patient_profile)
+
+                        with pipe_tab2:
+                            st.markdown("### Similar drugs retrieved (RAG context)")
+                            if similar_drugs_used:
+                                for i, drug in enumerate(similar_drugs_used, 1):
+                                    st.markdown(f"**{i}.** {drug}")
+                            else:
+                                st.caption("No similar drugs returned by this run.")
+                            if context_sources:
+                                st.markdown("**Sources:** " + context_sources)
+
+                        with pipe_tab3:
+                            m1, m2, m3 = st.columns(3)
+                            with m1:
+                                st.metric("Risk Level", risk_level, delta="High" if risk_level == "Low" else "-High", delta_color="inverse")
+                            with m2:
+                                st.metric("Confidence Score", "95%", "+2%")
+                            with m3:
+                                st.metric("Processing Time", "1.2s")
+                            risk_class = f"risk-{risk_level.lower()}" if risk_level else ""
+                            st.markdown(f"**Risk:** <span class='{risk_class}'>{risk_level}</span>", unsafe_allow_html=True)
+                            st.markdown("#### Clinical interpretation")
+                            st.markdown(result)
+                            st.warning(SAFETY_DISCLAIMER)
+                            if lottie_success:
+                                st_lottie(lottie_success, height=100, key="success", loop=False)
 
                     else:
                         st.error(f"Analysis failed: {response.text}")

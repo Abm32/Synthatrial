@@ -27,18 +27,29 @@ Create `.env`: `GOOGLE_API_KEY=...` (required), `PINECONE_API_KEY=...` (optional
 
 VCF and ChEMBL are **not** in the repo (gitignored). The app runs without them (manual profile + mock drug search).
 
-| Data | Purpose | Size | Required? |
-|------|---------|------|-----------|
+**Chromosomes used for profile generation** (genes in `src/vcf_processor.py`):
+
+| Chromosome | Genes | Size | Required? |
+|------------|-------|------|-----------|
 | **chr22** | CYP2D6 | ~200 MB | Yes for VCF profiles |
 | **chr10** | CYP2C19, CYP2C9 | ~700 MB | Recommended (Big 3) |
-| **chr2, chr12** | UGT1A1, SLCO1B1 | ~1.2 GB, ~700 MB | Optional |
+| **chr2** | UGT1A1 | ~1.2 GB | Optional |
+| **chr12** | SLCO1B1 | ~700 MB | Optional |
+| **chr6, chr11, chr19** | *(none yet)* | ~915 MB, ~700 MB, ~330 MB | Downloadable; not used for profiles (reserved) |
 | **ChEMBL** | Drug similarity (Pinecone) | ~1–2 GB | Optional (mock if missing) |
 
-**EBI 1000 Genomes (v5b):**
+If you have chr6, chr11, or chr19 in `data/genomes/`, they are discovered but **not used**—no genes are mapped to them. Only chr2, chr10, chr12, chr22 drive the patient genetics pipeline.
+
+**EBI 1000 Genomes (v5b):**  
 Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`
-- chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+
+- chr2: `ALL.chr2.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+- chr6: `ALL.chr6.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 - chr10: `ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
-- chr2, chr12: same pattern with `chr2` / `chr12`.
+- chr11: `ALL.chr11.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+- chr12: `ALL.chr12.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+- chr19: `ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+- chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 
 **One-time setup (local):**
 ```bash
