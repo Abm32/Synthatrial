@@ -13,6 +13,8 @@ from typing import Dict, List, Optional, Tuple
 
 from .allele_caller import _genotype_to_alleles, call_gene_from_variants
 from .exceptions import VCFProcessingError
+from .pgx_triggers import DRUG_GENE_TRIGGERS
+from .slco1b1_caller import interpret_slco1b1_from_vcf
 from .variant_db import (
     VARIANT_DB,
     get_allele_interpretation,
@@ -20,7 +22,6 @@ from .variant_db import (
     get_variant_info,
 )
 from .warfarin_caller import interpret_warfarin_from_vcf
-from .slco1b1_caller import interpret_slco1b1_from_vcf
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -56,7 +57,15 @@ WARFARIN_RSIDS = {"rs1799853", "rs1057910", "rs9923231"}
 # SLCO1B1 (statin myopathy): CPIC marker rs4149056.
 SLCO1B1_RSIDS = {"rs4149056"}
 # Drugs that trigger SLCO1B1 statin PGx recommendation (CPIC-style).
-STATIN_DRUGS = {"simvastatin", "atorvastatin", "rosuvastatin", "pravastatin", "lovastatin", "fluvastatin", "pitavastatin"}
+STATIN_DRUGS = {
+    "simvastatin",
+    "atorvastatin",
+    "rosuvastatin",
+    "pravastatin",
+    "lovastatin",
+    "fluvastatin",
+    "pitavastatin",
+}
 
 # Star Allele to Activity Score Mapping
 # Based on CPIC/PharmVar guidelines
@@ -525,12 +534,12 @@ def _chrom_key_for_gene(gene: str) -> Optional[str]:
 def generate_patient_profile_from_vcf(
     vcf_path: str,
     sample_id: str,
+    drug_name: Optional[str] = None,
     age: Optional[int] = None,
     conditions: Optional[List[str]] = None,
     lifestyle: Optional[Dict[str, str]] = None,
     vcf_path_chr10: Optional[str] = None,
     vcf_paths_by_chrom: Optional[Dict[str, str]] = None,
-    drug_name: Optional[str] = None,
 ) -> str:
     """
     Generate a synthetic patient profile from VCF data.
@@ -561,6 +570,14 @@ def generate_patient_profile_from_vcf(
             paths["chr22"] = vcf_path
         if vcf_path_chr10 and os.path.exists(vcf_path_chr10):
             paths["chr10"] = vcf_path_chr10
+
+    # --------------------------------------------
+    # Drug-aware PGx triggering (CPIC-style)
+    # --------------------------------------------
+    triggered_genes: set = set()
+    if drug_name and drug_name.strip():
+        triggered_genes = set(DRUG_GENE_TRIGGERS.get(drug_name.strip().lower(), []))
+    logger.info(f"Drug: {drug_name} → Triggered PGx genes: {triggered_genes}")
 
     # Extract variants and infer status for each profile gene from the correct chromosome VCF
     gene_variants: Dict[str, List] = {g: [] for g in PROFILE_GENES}
@@ -656,6 +673,17 @@ def generate_patient_profile_from_vcf(
     genetics_parts = []
     for gene in PROFILE_GENES:
         status, allele_call, interpretation = _status_and_alleles(gene)
+
+        # --------------------------------------------
+        # CPIC-style gating: only show drug-relevant genes
+        # --------------------------------------------
+        if gene == "SLCO1B1" and gene not in triggered_genes:
+            continue
+        if gene in ("CYP2C9", "VKORC1") and gene not in triggered_genes:
+            continue
+        if gene == "CYP2C19" and drug_name and gene not in triggered_genes:
+            continue
+
         s = status
         if gene == "VKORC1" and allele_call:
             genetics_parts.append(f"VKORC1 {allele_call}")
@@ -680,7 +708,11 @@ def generate_patient_profile_from_vcf(
             warfarin_var_map.update(
                 _variants_to_genotype_map(gene_variants[g], sample_id)
             )
-    if warfarin_var_map and any(rsid in warfarin_var_map for rsid in WARFARIN_RSIDS):
+    if (
+        "VKORC1" in triggered_genes
+        and warfarin_var_map
+        and any(rsid in warfarin_var_map for rsid in WARFARIN_RSIDS)
+    ):
         try:
             warfarin_result = interpret_warfarin_from_vcf(warfarin_var_map)
             if warfarin_result:
@@ -690,8 +722,8 @@ def generate_patient_profile_from_vcf(
         except Exception as e:
             logger.debug(f"Warfarin interpretation skipped: {e}")
 
-    # SLCO1B1 Statin PGx: only when drug is a statin (CPIC-style drug-gated recommendation)
-    if drug_name and drug_name.strip().lower() in STATIN_DRUGS:
+    # SLCO1B1 Statin PGx: only when drug triggers SLCO1B1 (CPIC-style)
+    if "SLCO1B1" in triggered_genes:
         slco_var_map: Dict[str, Tuple[str, str, str]] = {}
         if gene_variants.get("SLCO1B1"):
             slco_var_map.update(
