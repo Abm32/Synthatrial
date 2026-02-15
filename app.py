@@ -345,6 +345,12 @@ with tab1:
                                 )
                                 if warfarin_snippet:
                                     st.success(warfarin_snippet)
+                            if genetics_summary and "Statin PGx:" in genetics_summary:
+                                st.markdown("#### Statin Myopathy PGx (deterministic)")
+                                for part in genetics_summary.split(","):
+                                    if "Statin PGx:" in part:
+                                        st.success(part.strip())
+                                        break
                             st.markdown("#### Full patient profile")
                             st.text(patient_profile)
 

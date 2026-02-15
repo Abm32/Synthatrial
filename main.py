@@ -25,6 +25,7 @@ from src.vcf_processor import (
 )
 from src.vector_search import find_similar_drugs
 from src.warfarin_caller import interpret_warfarin
+from src.slco1b1_caller import interpret_slco1b1_from_vcf
 
 # Set up logging
 setup_logging()
@@ -73,6 +74,32 @@ def run_benchmark(json_path: str) -> None:
         )
         variants_raw = row.get("variants") or {}
 
+        # SLCO1B1: rs4149056 with [ref, alt, gt] or ref/alt/gt dict; expected = phenotype text
+        slco_var_map = None
+        if expected_display and variants_raw and "rs4149056" in variants_raw:
+            raw_rs = variants_raw.get("rs4149056")
+            if isinstance(raw_rs, (list, tuple)) and len(raw_rs) >= 3:
+                slco_var_map = {"rs4149056": (str(raw_rs[0]), str(raw_rs[1]), str(raw_rs[2]))}
+            elif isinstance(raw_rs, dict) and "ref" in raw_rs and "alt" in raw_rs and "gt" in raw_rs:
+                slco_var_map = {"rs4149056": (raw_rs["ref"], raw_rs["alt"], raw_rs["gt"])}
+        if slco_var_map:
+            slco_result = interpret_slco1b1_from_vcf(slco_var_map)
+            if slco_result:
+                predicted = slco_result["phenotype"]
+                match = predicted == expected_display
+                alleles = slco_result["genotype"]
+                expected_out = expected_display
+                gene = "SLCO1B1"
+                results.append({
+                    "gene": gene,
+                    "alleles": alleles,
+                    "expected": expected_out,
+                    "predicted": predicted,
+                    "match": match,
+                    "drug_name": row.get("drug_name", ""),
+                    "description": row.get("description", ""),
+                })
+                continue
         # Warfarin: variants include VKORC1 (rs9923231) and optional CYP2C9; expected = recommendation text
         if expected_display and variants_raw and _is_simple_variant_dict(variants_raw):
             if gene == "Warfarin" or "rs9923231" in variants_raw:
@@ -278,6 +305,7 @@ Examples:
                 lifestyle={"alcohol": "Moderate", "smoking": "Non-smoker"},
                 vcf_path_chr10=vcf_chr10,
                 vcf_paths_by_chrom=vcf_paths_by_chrom,
+                drug_name=user_drug_name,
             )
             print("  ✓ Generated patient profile from VCF")
         except Exception as e:
