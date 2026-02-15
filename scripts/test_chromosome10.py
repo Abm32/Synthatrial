@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.vcf_processor import (
     CYP_GENE_LOCATIONS,
+    discover_vcf_paths,
     extract_cyp_variants,
     generate_patient_profile_from_vcf,
     get_sample_ids_from_vcf,
@@ -41,8 +42,15 @@ def test_vcf_file_exists():
     print("Test 2: VCF File Existence")
     print("=" * 60)
 
-    chr22_path = "data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
-    chr10_path = "data/genomes/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    discovered = discover_vcf_paths("data/genomes")
+    chr22_path = (
+        discovered.get("chr22")
+        or "data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    )
+    chr10_path = (
+        discovered.get("chr10")
+        or "data/genomes/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    )
 
     files_ok = True
 

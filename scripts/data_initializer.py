@@ -140,10 +140,17 @@ class ProgressReporter:
 class DataInitializer:
     """Main data initialization orchestrator."""
 
-    # VCF file URLs and expected checksums
+    # VCF file URLs (1000 Genomes EBI release 20130502, v5b — v5a returns 404)
+    # See docs/VCF_CHROMOSOME_SET.md for recommended chromosome set.
+    EBI_VCF_BASE = "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
     VCF_URLS = {
-        "chr22": "https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-        "chr10": "https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
+        "chr22": f"{EBI_VCF_BASE}/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "chr10": f"{EBI_VCF_BASE}/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "chr2": f"{EBI_VCF_BASE}/ALL.chr2.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "chr6": f"{EBI_VCF_BASE}/ALL.chr6.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "chr11": f"{EBI_VCF_BASE}/ALL.chr11.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "chr19": f"{EBI_VCF_BASE}/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+        "chr12": f"{EBI_VCF_BASE}/ALL.chr12.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
     }
 
     # ChEMBL database URL
@@ -151,8 +158,13 @@ class DataInitializer:
 
     # Expected file sizes (approximate, for validation)
     EXPECTED_SIZES = {
-        "chr22": (200 * 1024 * 1024, 800 * 1024 * 1024),  # 200-800 MB
-        "chr10": (400 * 1024 * 1024, 1200 * 1024 * 1024),  # 400-1200 MB
+        "chr22": (180 * 1024 * 1024, 250 * 1024 * 1024),  # ~196 MB
+        "chr10": (650 * 1024 * 1024, 800 * 1024 * 1024),  # ~707 MB
+        "chr2": (1100 * 1024 * 1024, 1300 * 1024 * 1024),  # ~1.2 GB
+        "chr6": (850 * 1024 * 1024, 1000 * 1024 * 1024),  # ~915 MB
+        "chr11": (650 * 1024 * 1024, 800 * 1024 * 1024),  # ~701 MB
+        "chr19": (300 * 1024 * 1024, 400 * 1024 * 1024),  # ~329 MB
+        "chr12": (620 * 1024 * 1024, 750 * 1024 * 1024),  # ~677 MB
         "chembl": (800 * 1024 * 1024, 2000 * 1024 * 1024),  # 800-2000 MB
     }
 
@@ -479,12 +491,23 @@ class DataInitializer:
 
         # Determine file type and validate
         if file_path.endswith(".vcf.gz"):
-            # VCF file validation
+            # VCF file validation; detect chromosome (longest first: chr22 before chr2)
             chromosome = None
-            if "chr22" in file_path:
-                chromosome = "chr22"
-            elif "chr10" in file_path:
-                chromosome = "chr10"
+            chrom_order = tuple(
+                sorted(
+                    [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"],
+                    key=lambda x: -len(x),
+                )
+            )
+            for c in chrom_order:
+                if c not in file_path:
+                    continue
+                idx = file_path.find(c)
+                next_char = file_path[idx + len(c) : idx + len(c) + 1]
+                if next_char and next_char.isdigit():
+                    continue
+                chromosome = c
+                break
 
             if chromosome and chromosome in self.EXPECTED_SIZES:
                 min_size, max_size = self.EXPECTED_SIZES[chromosome]
@@ -557,7 +580,7 @@ class DataInitializer:
         total_files = 0
 
         # Check VCF files
-        for chromosome in ["chr22", "chr10"]:
+        for chromosome in list(self.VCF_URLS.keys()):
             vcf_path = self.genomes_dir / f"{chromosome}.vcf.gz"
             total_files += 1
 
@@ -687,13 +710,16 @@ class DataInitializer:
         Initialize all required data files.
 
         Args:
-            chromosomes: List of chromosomes to download (defaults to ['chr22', 'chr10'])
+            chromosomes: List of chromosomes to download (defaults to ['chr22', 'chr10']; see docs/VCF_CHROMOSOME_SET.md)
 
         Returns:
             True if all initialization successful, False otherwise
         """
         if chromosomes is None:
-            chromosomes = ["chr22", "chr10"]
+            chromosomes = [
+                "chr22",
+                "chr10",
+            ]  # minimum for SynthaTrial; add chr2,chr6,chr11,chr19 for representative set
 
         print(f"\n{'='*60}")
         print("SynthaTrial Data Initialization")

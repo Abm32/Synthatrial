@@ -247,27 +247,32 @@ from scripts.data_initializer import DataInitializer
 initializer = DataInitializer('$BASE_PATH', verbose=False)
 status = initializer.check_data_completeness()
 
-# Check VCF files
-for chromosome in ['chr22', 'chr10']:
+# Check VCF files (chr22 required for VCF mode; chr10/chr2/chr12 optional)
+for chromosome in ['chr22', 'chr10', 'chr2', 'chr12']:
     if status.vcf_files.get(chromosome, False):
         if chromosome == 'chr22':
-            print('✅ Chromosome 22 VCF file found')
+            print('✅ Chromosome 22 VCF file found (CYP2D6)')
+        elif chromosome == 'chr10':
+            print('✅ Chromosome 10 VCF file found (CYP2C19, CYP2C9)')
+        elif chromosome == 'chr2':
+            print('✅ Chromosome 2 VCF file found (UGT1A1)')
         else:
-            print('✅ Chromosome 10 VCF file found (Big 3 enzymes enabled)')
+            print('✅ Chromosome 12 VCF file found (SLCO1B1)')
     else:
         if chromosome == 'chr22':
             print('⚠️  Chromosome 22 VCF file not found at $BASE_PATH/data/genomes/chr22.vcf.gz')
-            print('   Mount VCF files as volumes or download them manually')
-        else:
-            print('⚠️  Chromosome 10 VCF file not found at $BASE_PATH/data/genomes/chr10.vcf.gz')
-            print('   Only CYP2D6 analysis will be available')
+            print('   Mount VCF files as volumes or run: python scripts/data_initializer.py --vcf chr22 chr10')
+            print('   See docs/DEPLOYMENT_DATA.md for deployment options.')
+        elif chromosome == 'chr10':
+            print('⚠️  Chromosome 10 VCF file not found; only CYP2D6 will be used.')
+        # chr2/chr12 are optional; no need to warn for every missing optional chr
 
 # Check ChEMBL database
 if status.chembl_database:
     print('✅ ChEMBL database found')
 else:
     print('⚠️  ChEMBL database not found at $BASE_PATH/data/chembl/chembl_34_sqlite/chembl_34.db')
-    print('   Vector search will use mock data')
+    print('   Vector search will use mock data. See docs/DEPLOYMENT_DATA.md for setup.')
 "
 }
 

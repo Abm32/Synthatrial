@@ -29,10 +29,17 @@ def test_imports():
 def test_vcf_file():
     """Test VCF file exists and can be read."""
     print("\nTesting VCF file...")
-    vcf_path = "data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    from src.vcf_processor import discover_vcf_paths
 
-    if not os.path.exists(vcf_path):
-        print(f"⚠ VCF file not found: {vcf_path}")
+    discovered = discover_vcf_paths("data/genomes")
+    vcf_path = (
+        discovered.get("chr22")
+        or "data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    )
+    if not vcf_path or not os.path.exists(vcf_path):
+        print(
+            f"⚠ VCF file not found: {vcf_path or 'data/genomes (no chr22 discovered)'}"
+        )
         return False
 
     print(f"✓ VCF file exists: {vcf_path}")

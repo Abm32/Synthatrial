@@ -12,7 +12,7 @@ Features:
 - Corruption detection using multiple validation methods
 - Progress tracking with ETA and speed monitoring
 - Retry logic with exponential backoff
-- Multi-chromosome support (chr10, chr22)
+- Multi-chromosome support (chr2, chr6, chr10, chr11, chr12, chr19, chr22; see docs/VCF_CHROMOSOME_SET.md)
 - Detailed logging and error reporting
 - Integration with data initializer orchestrator
 
@@ -177,33 +177,83 @@ class ProgressTracker:
 class VCFDownloader:
     """Specialized VCF file downloader with 1000 Genomes Project integration."""
 
-    # Official 1000 Genomes Project VCF files with metadata
+    # 1000 Genomes Phase 3 (EBI release 20130502) — use v5b (v5a returns 404)
+    # See docs/VCF_CHROMOSOME_SET.md for "gold standard" representative set rationale.
+    EBI_BASE = "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
     VCF_FILES = {
         "chr22": VCFFileInfo(
             chromosome="chr22",
-            url="https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-            filename="ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-            expected_size_range=(200 * 1024 * 1024, 800 * 1024 * 1024),  # 200-800 MB
-            description="Chromosome 22 variants (CYP2D6 enzyme region)",
+            url=f"{EBI_BASE}/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(180 * 1024 * 1024, 250 * 1024 * 1024),  # ~196 MB
+            description="Chromosome 22 (CYP2D6 region); small & gene-rich",
         ),
         "chr10": VCFFileInfo(
             chromosome="chr10",
-            url="https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-            filename="ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-            expected_size_range=(400 * 1024 * 1024, 1200 * 1024 * 1024),  # 400-1200 MB
-            description="Chromosome 10 variants (CYP2C19, CYP2C9 enzyme regions)",
+            url=f"{EBI_BASE}/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(650 * 1024 * 1024, 800 * 1024 * 1024),  # ~707 MB
+            description="Chromosome 10 (CYP2C19, CYP2C9 regions)",
+        ),
+        "chr2": VCFFileInfo(
+            chromosome="chr2",
+            url=f"{EBI_BASE}/ALL.chr2.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr2.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(1100 * 1024 * 1024, 1300 * 1024 * 1024),  # ~1.2 GB
+            description="Chromosome 2 (giant chr; high variation)",
+        ),
+        "chr6": VCFFileInfo(
+            chromosome="chr6",
+            url=f"{EBI_BASE}/ALL.chr6.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr6.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(850 * 1024 * 1024, 1000 * 1024 * 1024),  # ~915 MB
+            description="Chromosome 6 (MHC region; diversity benchmark)",
+        ),
+        "chr11": VCFFileInfo(
+            chromosome="chr11",
+            url=f"{EBI_BASE}/ALL.chr11.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr11.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(650 * 1024 * 1024, 800 * 1024 * 1024),  # ~701 MB
+            description="Chromosome 11 (high gene density; hemoglobin/olfactory)",
+        ),
+        "chr19": VCFFileInfo(
+            chromosome="chr19",
+            url=f"{EBI_BASE}/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(300 * 1024 * 1024, 400 * 1024 * 1024),  # ~329 MB
+            description="Chromosome 19 (highest gene density)",
+        ),
+        "chr12": VCFFileInfo(
+            chromosome="chr12",
+            url=f"{EBI_BASE}/ALL.chr12.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            filename="ALL.chr12.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
+            expected_size_range=(620 * 1024 * 1024, 750 * 1024 * 1024),  # ~677 MB
+            description="Chromosome 12 (e.g. SLCO1B1 region)",
         ),
     }
 
-    # Alternative mirror URLs for redundancy
+    # Mirror URLs (v5b; same EBI base)
     MIRROR_URLS = {
         "chr22": [
-            "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-            "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
+            f"{EBI_BASE}/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
         ],
         "chr10": [
-            "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
-            "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
+            f"{EBI_BASE}/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+        ],
+        "chr2": [
+            f"{EBI_BASE}/ALL.chr2.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+        ],
+        "chr6": [
+            f"{EBI_BASE}/ALL.chr6.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+        ],
+        "chr11": [
+            f"{EBI_BASE}/ALL.chr11.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+        ],
+        "chr19": [
+            f"{EBI_BASE}/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+        ],
+        "chr12": [
+            f"{EBI_BASE}/ALL.chr12.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
         ],
     }
 
@@ -561,12 +611,12 @@ class VCFDownloader:
                 errors.append(f"VCF content validation failed: {e}")
                 print(f"   ❌ VCF validation error: {e}")
 
-        # Check file size against expected ranges
+        # Check file size against expected ranges (match longest first so chr22 before chr2)
         chromosome = None
-        if "chr22" in file_path:
-            chromosome = "chr22"
-        elif "chr10" in file_path:
-            chromosome = "chr10"
+        for c in ("chr22", "chr10", "chr19", "chr12", "chr11", "chr6", "chr2"):
+            if c in file_path:
+                chromosome = c
+                break
 
         if chromosome and chromosome in self.VCF_FILES:
             vcf_info = self.VCF_FILES[chromosome]

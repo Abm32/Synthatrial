@@ -173,10 +173,17 @@ def test_vcf_processing():
     """Test VCF file processing (if VCF file exists)."""
     print("\n=== Test 4: VCF File Processing ===")
 
-    vcf_path = "data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    from src.vcf_processor import discover_vcf_paths
 
-    if not os.path.exists(vcf_path):
-        print(f"  ⚠ VCF file not found: {vcf_path}")
+    discovered = discover_vcf_paths("data/genomes")
+    vcf_path = (
+        discovered.get("chr22")
+        or "data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz"
+    )
+    if not vcf_path or not os.path.exists(vcf_path):
+        print(
+            f"  ⚠ VCF file not found: {vcf_path or 'data/genomes (no chr22 discovered)'}"
+        )
         print("  Skipping VCF processing test")
         return True  # Not a failure, just missing data
 
