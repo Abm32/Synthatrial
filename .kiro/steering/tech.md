@@ -348,9 +348,7 @@ python scripts/backup_manager.py --create-backup  # Create automated backup
 python scripts/multi_arch_build.py --target prod --platforms linux/amd64,linux/arm64  # Multi-arch builds
 python scripts/deploy_to_registry.py --environment production  # Deploy to production
 
-# Project Analysis and Planning
-# See PROJECT_ANALYSIS.md for comprehensive project analysis
-# See NEXT_STEPS_ACTION_PLAN.md for detailed deployment roadmap
+# Project and deployment: see root README.md
 ```
 
 ## Architecture Notes
@@ -398,7 +396,7 @@ python scripts/deploy_to_registry.py --environment production  # Deploy to produ
 - Implement mock modes for testing without credentials
 - Follow CPIC guidelines for pharmacogenomics predictions
 - Use descriptive error messages for user guidance
-- **Documentation**: Use streamlined structure in `docs/` - single files for setup, usage, implementation, troubleshooting, and paper review
+- **Documentation**: All in root README.md; docs/README.md points to it
 - **Testing**: Run validation tests after changes (`python tests/validation_tests.py`)
 - **Property-based testing**: Use Hypothesis for comprehensive testing of SSL, data initialization, and development environment functionality
 - **Code quality**: Use pre-commit hooks for automated code formatting, linting, and security checks
@@ -411,7 +409,7 @@ python scripts/deploy_to_registry.py --environment production  # Deploy to produ
 - **Docker Development**: Use `make quick-start` for development, `make dev-enhanced` for enhanced development, `make run-prod` for production testing
 - **API Development**: Use `python api.py` for local API testing, `python test_api.py` for automated API testing
 - **Cloud Deployment**: Deploy FastAPI to Render, Vercel, Heroku, AWS Lambda, or other cloud platforms
-- **Competition Deployment**: Use `COMPETITION_DEPLOYMENT.md` and `QUICK_DEPLOY.md` for rapid deployment
+- **Competition Deployment**: See root README (Deployment section and render.yaml)
 - **Demo Interface**: Use `demo.html` for professional competition presentations
 - **API Documentation**: Use `/docs` endpoint for interactive Swagger UI, `/redoc` for alternative documentation
 - **Jupyter Development**: Use `make jupyter` for notebook-based development and analysis
@@ -424,8 +422,7 @@ python scripts/deploy_to_registry.py --environment production  # Deploy to produ
 - **Enterprise Deployment**: Production-ready containerization with SSL/TLS, monitoring, backup automation, and disaster recovery procedures
 - **Integration Testing**: Comprehensive end-to-end workflow validation, cross-component testing, and automated test orchestration
 - **Model Selection**: Default to gemini-2.5-flash for speed, use gemini-2.5-pro for complex analysis
-- **Project Analysis**: Use `PROJECT_ANALYSIS.md` for comprehensive technical assessment and current status overview
-- **Deployment Planning**: Use `NEXT_STEPS_ACTION_PLAN.md` for detailed deployment roadmap and strategic planning
+- **Project and deployment**: See root README.md for overview and deployment
 - **Production Readiness**: Use `make production-ready` to validate complete system readiness for deployment
 - **System Status**: Use `make system-status` and `make automation-status` for comprehensive status overview
 - **Version Consistency**: Maintain consistent version numbers across all files (currently v0.2 Beta)

@@ -11,8 +11,6 @@ SynthaTrial/
 ├── Procfile                  # Heroku deployment configuration
 ├── runtime.txt               # Python runtime specification
 ├── demo.html                 # Competition demo interface
-├── COMPETITION_DEPLOYMENT.md # Competition deployment strategy guide
-├── QUICK_DEPLOY.md          # 10-minute deployment guide
 ├── .dockerignore             # Docker ignore file
 ├── Dockerfile                # Multi-stage Docker build
 ├── docker-compose.yml        # Docker Compose configuration
@@ -25,14 +23,8 @@ SynthaTrial/
 ├── requirements.txt          # Python dependencies
 ├── app.py                    # Streamlit web interface
 ├── main.py                   # CLI entry point
-├── api.py                    # FastAPI REST API wrapper (NEW)
-├── test_api.py               # API test suite (NEW)
-├── API_README.md             # API documentation (NEW)
-├── RENDER_DEPLOYMENT.md      # Render deployment guide (NEW)
-├── DEPLOYMENT_CHECKLIST.md   # Deployment checklist (NEW)
-├── QUICK_START_API.md        # Quick API deployment guide (NEW)
-├── PROJECT_ANALYSIS.md       # Comprehensive project analysis and status (NEW)
-├── NEXT_STEPS_ACTION_PLAN.md # Detailed action plan for deployment and scaling (NEW)
+├── api.py                    # FastAPI REST API wrapper
+├── test_api.py               # API test suite
 ├── src/                      # Core application modules
 │   ├── __init__.py
 │   ├── input_processor.py    # SMILES → Molecular fingerprint conversion
@@ -97,23 +89,8 @@ SynthaTrial/
 │   └── genomes/             # VCF genomic data files
 │       ├── ALL.chr22.*.vcf.gz  # Chromosome 22 (CYP2D6)
 │       └── ALL.chr10.*.vcf.gz  # Chromosome 10 (CYP2C19, CYP2C9)
-└── docs/                    # Comprehensive documentation
-    ├── README.md            # Documentation index
-    ├── setup.md             # Complete setup and installation guide
-    ├── usage.md             # Usage examples and CLI reference
-    ├── implementation.md    # Technical implementation details
-    ├── troubleshooting.md   # Common issues and solutions
-    ├── paper-review.md      # Research paper review and validation
-    ├── docker.md            # Docker deployment guide
-    ├── concepts/            # Conceptual explanations
-    │   ├── pharmacogenomics.md
-    │   ├── rag_explained.md
-    │   ├── run_modes_explained.md  # Three run modes guide
-    │   └── vector_databases.md
-    └── paper/               # Research paper materials (remaining files)
-        ├── FINAL_PAPER_REVIEW.md
-        ├── FINAL_RESULTS_ANALYSIS.md
-        └── VALIDATION_RESULTS.md
+├── docs/                    # Documentation (points to root README)
+│   └── README.md
 ├── docker/                  # Docker configuration files
 │   ├── Dockerfile.dev       # Development Dockerfile
 │   ├── Dockerfile.dev-enhanced # Enhanced development Dockerfile (NEW)
@@ -188,28 +165,10 @@ SynthaTrial/
 - **`multi_arch_build.py`**: Multi-architecture build orchestration for AMD64/ARM64 platforms with build optimization and artifact management (NEW)
 - **`deploy_to_registry.py`**: Container registry deployment automation with environment-specific deployment, health checks, and rollback capabilities (NEW)
 
-### Documentation (`docs/`)
+### Documentation
 
-- **`README.md`**: Documentation index and navigation guide
-- **`setup.md`**: Complete setup and installation guide (consolidated from multiple setup files)
-- **`usage.md`**: Usage examples and CLI reference with comprehensive test cases
-- **`implementation.md`**: Technical implementation details and architecture (consolidated from multiple implementation files)
-- **`troubleshooting.md`**: Common issues and solutions (consolidated from multiple troubleshooting files)
-- **`paper-review.md`**: Research paper review and validation results (consolidated from multiple paper files)
-- **`docker.md`**: Complete Docker deployment guide with development and production configurations
-- **`docs/cicd.md`**: CI/CD pipeline documentation with GitHub Actions workflows and deployment automation (NEW)
-- **`docs/deployment.md`**: Deployment automation guide with multi-environment deployment strategies (NEW)
-
-### API and Deployment Documentation (Root Level)
-
-- **`API_README.md`**: Complete FastAPI documentation with usage examples, endpoint specifications, and integration guides
-- **`RENDER_DEPLOYMENT.md`**: Step-by-step guide for deploying FastAPI to Render cloud platform with configuration details
-- **`COMPETITION_DEPLOYMENT.md`**: Competition deployment strategy with cloud platform options and demo setup
-- **`QUICK_DEPLOY.md`**: 10-minute deployment guide for rapid competition setup
-- **`DEPLOYMENT_CHECKLIST.md`**: Comprehensive deployment checklist with expected results and troubleshooting
-- **`QUICK_START_API.md`**: Quick start guide for API deployment in 3 simple steps
-- **`PROJECT_ANALYSIS.md`**: Comprehensive project analysis with architecture overview, current status, and technical metrics
-- **`NEXT_STEPS_ACTION_PLAN.md`**: Detailed action plan for production deployment, user onboarding, and strategic roadmap
+- **`README.md`** (root): Single source of truth — setup, data, deployment, commands, architecture, troubleshooting, API (interactive docs at /docs when running).
+- **`docs/README.md`**: Points to root README.
 
 ### Competition and Demo Files
 

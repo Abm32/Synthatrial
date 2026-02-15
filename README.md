@@ -4,7 +4,7 @@
 
 Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, PharmVar/CPIC-style interpretation, RAG with similar drugs, and LLM-generated risk and mechanism.
 
-> **⚠️ Not for clinical use**  
+> **⚠️ Not for clinical use**
 > SynthaTrial is a **research prototype**. Outputs are synthetic and must **not** be used for clinical decision-making, diagnosis, or treatment. Not medical advice.
 
 ---
@@ -34,10 +34,10 @@ VCF and ChEMBL are **not** in the repo (gitignored). The app runs without them (
 | **chr2, chr12** | UGT1A1, SLCO1B1 | ~1.2 GB, ~700 MB | Optional |
 | **ChEMBL** | Drug similarity (Pinecone) | ~1–2 GB | Optional (mock if missing) |
 
-**EBI 1000 Genomes (v5b):**  
-Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`  
-- chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`  
-- chr10: `ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`  
+**EBI 1000 Genomes (v5b):**
+Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`
+- chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+- chr10: `ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 - chr2, chr12: same pattern with `chr2` / `chr12`.
 
 **One-time setup (local):**
@@ -60,7 +60,7 @@ Data is not in the image. Two options:
 1. **Volume mount:** Pre-download into `./data/genomes` and `./data/chembl` on the host; production Compose mounts `./data` → `/app/data`.
 2. **Download in container:** Start once, then e.g. `docker exec <container> python scripts/data_initializer.py --vcf chr22 chr10`. Use a **named volume** for `/app/data` so data persists.
 
-Without any data, the app runs in manual profile mode with mock drug search.
+Without any data, the app runs in manual profile mode with mock drug search. For Render: use `render.yaml` and set env vars (e.g. `GOOGLE_API_KEY`) in the dashboard.
 
 ---
 
@@ -69,7 +69,7 @@ Without any data, the app runs in manual profile mode with mock drug search.
 | Command | Description |
 |--------|-------------|
 | `streamlit run app.py` | Web UI (default port 8501) |
-| `python api.py` | FastAPI backend (port 8000); UI can call `/analyze` |
+| `python api.py` | FastAPI backend (port 8000); UI can call `/analyze`. Interactive API docs: http://localhost:8000/docs |
 | `python main.py --drug-name <name>` | CLI simulation (auto-discovers VCFs in `data/genomes/`) |
 | `python main.py --vcf <path> [--vcf-chr10 <path>] --drug-name Warfarin` | CLI with explicit VCFs |
 | `python main.py --benchmark cpic_examples.json` | Evaluation: predicted vs expected phenotype, match % |
