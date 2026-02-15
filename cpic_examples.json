@@ -1,4 +1,5 @@
 [
+  {"gene": "CYP2C19", "variants": {"rs4244285": "A"}, "expected": "Intermediate Metabolizer", "description": "CYP2C19 *1/*2 (PharmVar rs4244285 A) - CPIC benchmark"},
   {"drug_name": "Codeine", "gene": "CYP2D6", "alleles": ["*1", "*4"], "expected_phenotype": "intermediate_metabolizer", "description": "CYP2D6 *1/*4 - one no-function allele"},
   {"drug_name": "Codeine", "gene": "CYP2D6", "alleles": ["*4", "*4"], "expected_phenotype": "poor_metabolizer", "description": "CYP2D6 *4/*4 - poor metabolizer"},
   {"drug_name": "Codeine", "gene": "CYP2D6", "alleles": ["*1", "*1"], "expected_phenotype": "extensive_metabolizer", "description": "CYP2D6 *1/*1 - normal"},

@@ -12,7 +12,7 @@ import json
 import os
 
 from src.agent_engine import run_simulation
-from src.allele_caller import call_gene_from_variants
+from src.allele_caller import call_gene_from_variants, interpret_cyp2c19
 from src.config import config
 from src.exceptions import ConfigurationError
 from src.input_processor import get_drug_fingerprint
@@ -41,12 +41,20 @@ def _variants_from_row(row: dict) -> dict:
     return out
 
 
+def _is_simple_variant_dict(v: dict) -> bool:
+    """True if variants is rsid -> alt (all values are strings)."""
+    if not v:
+        return False
+    return all(isinstance(x, str) for x in v.values())
+
+
 def run_benchmark(json_path: str) -> None:
     """
-    Run evaluation mode: load CPIC-style examples from JSON, report predicted vs expected
-    phenotype and match %. Supports:
-    - allele-based: {"gene", "alleles", "expected_phenotype"} (uses get_phenotype_prediction)
-    - variant-based: {"gene", "variants", "expected_phenotype"} (uses PharmVar/CPIC data when present)
+    Run evaluation mode: load CPIC-style examples from JSON, report predicted vs expected.
+    Supports:
+    - CYP2C19 + "expected" (display): {"gene": "CYP2C19", "variants": {"rs4244285": "A"}, "expected": "Intermediate Metabolizer"} -> interpret_cyp2c19
+    - allele-based: {"gene", "alleles", "expected_phenotype"} (normalized)
+    - variant-based (VCF): {"gene", "variants": {rsid: {ref, alt, gt}}, "expected_phenotype"} (normalized)
     """
     if not os.path.isfile(json_path):
         print(f"Error: Benchmark file not found: {json_path}")
@@ -58,28 +66,47 @@ def run_benchmark(json_path: str) -> None:
     results = []
     for i, row in enumerate(examples):
         gene = row.get("gene", "CYP2D6")
-        expected = (
+        expected_display = row.get("expected")
+        expected_normalized = (
             (row.get("expected_phenotype") or "").strip().lower().replace(" ", "_")
         )
-        variant_map = _variants_from_row(row)
-        if variant_map:
-            cpic_result = call_gene_from_variants(gene, variant_map)
-            if cpic_result:
-                predicted = cpic_result["phenotype_normalized"]
-                alleles = cpic_result.get("alleles_detected", [])
-            else:
-                predicted = "unknown"
-                alleles = []
+        variants_raw = row.get("variants") or {}
+
+        if (
+            expected_display
+            and variants_raw
+            and gene == "CYP2C19"
+            and _is_simple_variant_dict(variants_raw)
+        ):
+            result = interpret_cyp2c19(variants_raw)
+            predicted = result["phenotype"]
+            match = predicted == expected_display
+            alleles = result.get("alleles", "*1/*1")
+            expected_out = expected_display
         else:
-            alleles = row.get("alleles", [])
-            copy_number = row.get("copy_number", 2)
-            predicted = get_phenotype_prediction(gene, alleles, copy_number)
-        match = predicted == expected
+            variant_map = _variants_from_row(row)
+            if variant_map:
+                cpic_result = call_gene_from_variants(gene, variant_map)
+                if cpic_result:
+                    predicted = cpic_result["phenotype_normalized"]
+                    alleles = cpic_result.get("alleles_detected", [])
+                else:
+                    predicted = "unknown"
+                    alleles = []
+                expected_out = expected_normalized
+                match = predicted == expected_normalized
+            else:
+                alleles = row.get("alleles", [])
+                copy_number = row.get("copy_number", 2)
+                predicted = get_phenotype_prediction(gene, alleles, copy_number)
+                expected_out = expected_normalized
+                match = predicted == expected_normalized
+
         results.append(
             {
                 "gene": gene,
                 "alleles": alleles,
-                "expected": expected,
+                "expected": expected_out,
                 "predicted": predicted,
                 "match": match,
                 "drug_name": row.get("drug_name", ""),
@@ -94,7 +121,12 @@ def run_benchmark(json_path: str) -> None:
     )
     print("-" * 90)
     for r in results:
-        alleles_str = ",".join(r["alleles"]) if r["alleles"] else "*1/*1"
+        al = r["alleles"]
+        alleles_str = (
+            al
+            if isinstance(al, str)
+            else (",".join(al) if al else "*1/*1")
+        )
         print(
             f"{r['gene']:<10} {alleles_str:<20} {r['expected']:<25} {r['predicted']:<25} {'Yes' if r['match'] else 'No':<6}"
         )

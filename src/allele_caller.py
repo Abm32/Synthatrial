@@ -20,6 +20,33 @@ from typing import Dict, List, Optional, Tuple
 DEFAULT_PGX_DIR = Path(__file__).resolve().parent.parent / "data" / "pgx"
 
 
+def load_pharmvar_alleles(gene: str, base_dir: Optional[Path] = None) -> "pd.DataFrame":
+    """
+    Load PharmVar-style allele definition TSV for a gene.
+    Example: data/pgx/pharmvar/cyp2c19_alleles.tsv
+    *1 is the default when no variant is detected (no row required).
+    """
+    base = base_dir or DEFAULT_PGX_DIR
+    path = base / "pharmvar" / f"{gene.lower()}_alleles.tsv"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing PharmVar allele file: {path}")
+    return load_pharmvar_table(path)
+
+
+def load_cpic_translation_for_gene(
+    gene: str, base_dir: Optional[Path] = None
+) -> Dict[str, str]:
+    """
+    Load CPIC diplotype -> phenotype mapping JSON for a gene.
+    Example: data/pgx/cpic/cyp2c19_phenotypes.json
+    """
+    base = base_dir or DEFAULT_PGX_DIR
+    path = base / "cpic" / f"{gene.lower()}_phenotypes.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing CPIC phenotype file: {path}")
+    return load_cpic_translation(path)
+
+
 def load_pharmvar_table(path: str | Path) -> "pd.DataFrame":
     """Load PharmVar-style allele table (TSV: allele, rsid, alt, function)."""
     import pandas as pd
@@ -79,6 +106,37 @@ def call_star_alleles(
     return allele_counts
 
 
+def call_star_alleles_simple(
+    variant_dict: Dict[str, str], allele_table: "pd.DataFrame"
+) -> List[str]:
+    """
+    Given patient variants (rsid -> alt), return detected star alleles.
+    Example variant_dict: {"rs4244285": "A"} -> ["*2"]
+    Default = ["*1"] if nothing detected.
+    """
+    detected: List[str] = []
+    for _, row in allele_table.iterrows():
+        rsid = str(row.get("rsid", "")).strip()
+        alt = str(row.get("alt", "")).strip()
+        if not rsid or rsid in ("-", "") or not alt or alt in ("-", ""):
+            continue
+        if rsid in variant_dict and variant_dict[rsid] == alt:
+            detected.append(str(row.get("allele", "")).strip())
+    return detected if detected else ["*1"]
+
+
+def build_diplotype_simple(alleles: List[str]) -> str:
+    """
+    Convert allele list into diplotype string.
+    ["*2"] -> "*1/*2"; ["*2", "*17"] -> "*2/*17"
+    """
+    if not alleles:
+        return "*1/*1"
+    if len(alleles) == 1:
+        return f"*1/{alleles[0]}"
+    return f"{alleles[0]}/{alleles[1]}"
+
+
 def build_diplotype(allele_counts: Dict[str, int]) -> str:
     """
     Build diplotype string from allele copy counts (e.g. {"*2": 1} -> "*1/*2").
@@ -106,7 +164,26 @@ def load_cpic_translation(path: str | Path) -> Dict[str, str]:
 def diplotype_to_phenotype(diplotype: str, translation: Dict[str, str]) -> str:
     """Return CPIC phenotype label for a diplotype, or 'Unknown' if not in table."""
     normalized = diplotype.strip()
-    return translation.get(normalized, "Unknown")
+    return translation.get(normalized, "Unknown Metabolizer Status")
+
+
+def interpret_cyp2c19(
+    patient_variants: Dict[str, str], base_dir: Optional[Path] = None
+) -> Dict[str, str]:
+    """
+    Deterministic CYP2C19 interpretation from variant dict (rsid -> alt).
+    Returns {"gene": "CYP2C19", "alleles": diplotype, "phenotype": CPIC label}.
+    """
+    allele_table = load_pharmvar_alleles("cyp2c19", base_dir=base_dir)
+    translation = load_cpic_translation_for_gene("cyp2c19", base_dir=base_dir)
+    alleles = call_star_alleles_simple(patient_variants, allele_table)
+    diplotype = build_diplotype_simple(alleles)
+    phenotype = diplotype_to_phenotype(diplotype, translation)
+    return {
+        "gene": "CYP2C19",
+        "alleles": diplotype,
+        "phenotype": phenotype,
+    }
 
 
 def cpic_display_to_normalized(display: str) -> str:
