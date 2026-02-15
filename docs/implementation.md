@@ -2,6 +2,17 @@
 
 Technical implementation details for the SynthaTrial pharmacogenomics platform.
 
+> **⚠️ Safety disclaimer** — SynthaTrial is a **research prototype** (simulation and explanation engine), not a certified pharmacogenomics predictor. Outputs must not be used for clinical decision-making.
+
+## Current project state (summary)
+
+- **Variant interpretation**: Allele calling (*1, *2, *4…) with PharmVar/CPIC-style `ALLELE_FUNCTION_MAP` in `variant_db.py`. `infer_metabolizer_status_with_alleles()` returns phenotype, allele call, and interpretation strings. Profiles can show e.g. "CYP2D6 *1/*4 (Poor Metabolizer)".
+- **Genes**: CYP2D6, CYP2C19, CYP2C9 (Big 3); UGT1A1 (chr2), SLCO1B1 (chr12). Planned: HLA-B*57:01.
+- **Multi-chromosome**: VCFs auto-discovered from `data/genomes/` (chr1–chr22, chrX, chrY); profile generation uses chr22, chr10, chr2, chr12 when available.
+- **Evaluation**: `python main.py --benchmark cpic_examples.json` reports predicted vs expected phenotype and match % (CPIC-style examples in `cpic_examples.json`).
+- **RAG transparency**: API response and Streamlit UI show similar drugs used, genetics summary, and context sources (ChEMBL/Pinecone or mock).
+- **Entry points**: `app.py` (Streamlit), `main.py` (CLI + benchmark), `api.py` (FastAPI `/analyze`).
+
 ## Architecture Overview
 
 ```
@@ -11,11 +22,13 @@ User Input (Drug SMILES + Patient Profile)
     ↓
 [Vector Search] → Similar Drugs (from ChEMBL/Pinecone)
     ↓
-[VCF Processor] → Genetic Variants (CYP2D6, CYP2C19, CYP2C9)
+[VCF Processor] → Variants + allele calling (chr22, 10, 2, 12)
     ↓
-[Agent Engine] → LLM Prediction (RAG with retrieved context)
+[Variant DB] → ALLELE_FUNCTION_MAP → metabolizer status (+ allele call in profile)
     ↓
-Output (Risk Level + Predicted Reaction + Mechanism)
+[Agent Engine] → LLM prediction (RAG: similar drugs + patient profile)
+    ↓
+Output (risk level, interpretation, + RAG context: similar_drugs_used, genetics_summary, context_sources)
 ```
 
 ---
@@ -94,15 +107,11 @@ def find_similar_drugs(fingerprint, top_k=3):
 
 **Purpose**: Extract variants in CYP gene regions
 
-**Gene Locations** (GRCh37/hg19):
-```python
-CYP_GENE_LOCATIONS = {
-    'CYP2D6': {'chrom': '22', 'start': 42522500, 'end': 42530900},
-    'CYP2C19': {'chrom': '10', 'start': 96535040, 'end': 96625463},
-    'CYP2C9': {'chrom': '10', 'start': 96698415, 'end': 96749147},
-    'CYP3A4': {'chrom': '7', 'start': 99376140, 'end': 99391055}
-}
-```
+**Gene Locations** (GRCh37/hg19): CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), CYP3A4 (chr7), UGT1A1 (chr2), SLCO1B1 (chr12). VCF files are auto-discovered from `data/genomes/` for any chr1–chr22, chrX, chrY; profile generation uses chr22, chr10, chr2, chr12 when available.
+
+**Variant interpretation layer:** Allele calling (*1, *2, *4, …) is grounded in a PharmVar/CPIC-style **allele→function map** (`ALLELE_FUNCTION_MAP` in `variant_db.py`). `infer_metabolizer_status_with_alleles()` returns phenotype plus allele call and interpretation strings (e.g. "CYP2D6*4: No function"). Patient profiles can include allele calls when available (e.g. "CYP2D6 *1/*4 (Poor Metabolizer)").
+
+**Beyond CYP Big 3:** Implemented: **UGT1A1** (chr2; irinotecan), **SLCO1B1** (chr12; statins). **Planned:** HLA-B*57:01 (abacavir hypersensitivity) when HLA typing is added.
 
 **Implementation**:
 ```python
@@ -175,9 +184,9 @@ def infer_metabolizer_status(variants, sample_id, gene='CYP2D6'):
         return 'poor_metabolizer'
 ```
 
-**Note**: Real implementation would require haplotype phasing and star allele calling using PharmVar database.
+**Current implementation**: Uses `variant_db.get_phenotype_prediction(gene, found_alleles, copy_number)` with rsID→allele lookup from `VARIANT_DB` and activity scores. Allele→function strings come from `ALLELE_FUNCTION_MAP`. See **Variant DB** below. For allele-level output use `infer_metabolizer_status_with_alleles()`.
 
-##### `generate_patient_profile_from_vcf(vcf_path, sample_id, vcf_path_chr10=None)`
+##### `generate_patient_profile_from_vcf(vcf_path, sample_id, vcf_path_chr10=None, vcf_paths_by_chrom=None)`
 
 **Purpose**: Generate comprehensive patient profile from VCF data
 
@@ -206,11 +215,27 @@ def generate_patient_profile_from_vcf(vcf_path, sample_id, vcf_path_chr10=None):
 ```
 
 **Features**:
-- ✅ Multi-chromosome support (chr22 + chr10)
-- ✅ Big 3 enzymes (CYP2D6, CYP2C19, CYP2C9)
-- ✅ Activity Score method for metabolizer inference
-- ✅ Comprehensive patient profile generation
+- ✅ Multi-chromosome support (chr22, chr10, chr2, chr12) via `vcf_paths_by_chrom` or legacy args
+- ✅ Profile genes: CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1; allele call in profile when available
+- ✅ Activity Score method via `variant_db.get_phenotype_prediction`; `infer_metabolizer_status_with_alleles()` for transparency
 - ✅ Backward compatibility (single chromosome mode)
+
+---
+
+### 3b. Variant DB (`src/variant_db.py`)
+
+**Purpose**: PharmVar/CPIC-style allele→function mapping and phenotype prediction from allele lists.
+
+**Key data**:
+- **`ALLELE_FUNCTION_MAP`**: Dict of e.g. `"CYP2D6*4": "No function"`, `"CYP2C19*2": "Loss of function"` for display and grounding.
+- **`VARIANT_DB`**: rsID → allele, impact, activity_score (used for inference from VCF).
+
+**Key functions**:
+- **`get_phenotype_prediction(gene, alleles_found, copy_number)`**: Returns metabolizer status (used by VCF processor and by `main.py --benchmark`).
+- **`get_allele_function(gene, allele)`**, **`get_allele_interpretation(gene, alleles_found)`**: For human-readable interpretation strings.
+- Wild-type *1 is treated as 1.0 activity when present in allele list.
+
+**Supported genes**: CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1. Planned: HLA-B*57:01.
 
 ---
 

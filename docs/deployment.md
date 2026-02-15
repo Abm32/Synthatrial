@@ -2,6 +2,8 @@
 
 This document provides comprehensive information about SynthaTrial's deployment automation system for container registries and environment-specific deployments.
 
+> **Note:** SynthaTrial is a research prototype; outputs must not be used for clinical decision-making. For VCF/ChEMBL data at deploy time, see [Deployment data](DEPLOYMENT_DATA.md).
+
 ## Overview
 
 The deployment automation system provides:

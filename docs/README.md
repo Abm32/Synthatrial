@@ -2,6 +2,9 @@
 
 Welcome to the SynthaTrial documentation. This directory contains comprehensive documentation organized for easy navigation.
 
+> **⚠️ Safety disclaimer**  
+> **SynthaTrial is a research prototype.** It is a simulation and explanation engine, not a certified pharmacogenomics predictor. All outputs are synthetic predictions and **must not be used for clinical decision-making**, diagnosis, or treatment. Not for use as medical advice software.
+
 ## 📚 Documentation Structure
 
 ```
@@ -11,6 +14,8 @@ docs/
 ├── usage.md               # Usage examples and CLI reference
 ├── implementation.md      # Technical implementation details
 ├── troubleshooting.md     # Common issues and solutions
+├── DEPLOYMENT_DATA.md     # VCF and ChEMBL data when deploying (Docker, volumes)
+├── VCF_CHROMOSOME_SET.md  # Recommended chromosome set (v5b, gold standard)
 ├── paper-review.md        # Research paper review and validation
 └── concepts/              # Conceptual explanations
     ├── pharmacogenomics.md
@@ -48,6 +53,10 @@ docs/
   - Example test cases
   - API usage (Python)
 
+### Deploying
+- **[Deployment data](DEPLOYMENT_DATA.md)** - VCF and ChEMBL data when deploying (Docker, volumes)
+- **[Docker guide](docker.md)** - Containers, Compose, SSL
+
 ### Understanding the Technology
 - **[Implementation Guide](implementation.md)** - Technical details
   - Architecture overview
@@ -81,6 +90,8 @@ docs/
 
 - **Set up the system** → [Setup Guide](setup.md)
 - **Run a simulation** → [Usage Guide](usage.md)
+- **Run the CPIC benchmark** → `python main.py --benchmark cpic_examples.json` ([Usage](usage.md#mode-3-evaluation-benchmark))
+- **Deploy (Docker, VCF/ChEMBL data)** → [Deployment data](DEPLOYMENT_DATA.md)
 - **Understand how it works** → [Implementation Guide](implementation.md)
 - **Fix an error** → [Troubleshooting Guide](troubleshooting.md)
 - **Learn the concepts** → [Concepts](concepts/)
@@ -107,20 +118,19 @@ docs/
 ### Core Functionality
 - **Molecular Analysis**: SMILES → Morgan fingerprints (RDKit)
 - **Similarity Search**: Vector database search (Pinecone)
-- **Genetic Profiling**: VCF file processing (1000 Genomes Project)
-- **AI Simulation**: LLM-based pharmacogenomics prediction (Google Gemini)
+- **Genetic Profiling**: VCF file processing (1000 Genomes Project); auto-discovery for chr1–chr22, chrX, chrY
+- **AI Simulation**: LLM-based simulation and explanation (Google Gemini) — *research prototype, not for clinical use*
 
-### Big 3 Enzymes Support
-- **CYP2D6** (Chromosome 22): ~25% of drugs
-- **CYP2C19** (Chromosome 10): Antiplatelet drugs, PPIs
-- **CYP2C9** (Chromosome 10): Anticoagulants, NSAIDs
-- **Combined Coverage**: ~60-70% of clinically used drugs
+### Pharmacogenomics Genes (multi-chromosome)
+- **CYP2D6** (chr22), **CYP2C19** / **CYP2C9** (chr10), **UGT1A1** (chr2), **SLCO1B1** (chr12)
+- **Big 3** (CYP2D6, CYP2C19, CYP2C9): ~60–70% of clinically used drugs
+- Profile generation uses all available chromosome VCFs; see [VCF chromosome set](VCF_CHROMOSOME_SET.md) and [Deployment data](DEPLOYMENT_DATA.md)
 
-### Validation and Testing
-- **CPIC Compliance**: Follows clinical guidelines
-- **Test Suite**: Comprehensive validation tests
-- **Performance Benchmarks**: Timing and accuracy metrics
-- **Research Validation**: 100% accuracy on test cases
+### Variant Interpretation & Evaluation
+- **Allele calling**: *1, *2, *4… with PharmVar/CPIC-style mapping (`ALLELE_FUNCTION_MAP` in `variant_db.py`)
+- **Evaluation mode**: `python main.py --benchmark cpic_examples.json` — predicted vs expected phenotype, match %
+- **CPIC-style examples**: `cpic_examples.json` for reproducible benchmarking
+- **Test suite**: `tests/validation_tests.py`, `tests/quick_test.py`
 
 ---
 
@@ -147,11 +157,20 @@ conda activate synthatrial
 conda install -c conda-forge rdkit
 pip install -r requirements.txt
 
+# Data (optional)
+python scripts/data_initializer.py --vcf chr22 chr10
+
 # Run web interface
 streamlit run app.py
 
-# Run CLI simulation
-python main.py --vcf data/genomes/chr22.vcf.gz --drug-name Codeine
+# Run API (for UI backend)
+python api.py   # or uvicorn api:app
+
+# CLI simulation (auto-discovers data/genomes/ if present)
+python main.py --drug-name Warfarin
+
+# Evaluation mode
+python main.py --benchmark cpic_examples.json
 
 # Test system
 python tests/quick_test.py
@@ -159,10 +178,11 @@ python tests/quick_test.py
 
 ### Key Files
 
-- **Main application**: `app.py` (web), `main.py` (CLI)
-- **Core modules**: `src/` directory
-- **Test suite**: `tests/validation_tests.py`
-- **Setup scripts**: `scripts/setup_pinecone_index.py`
+- **Applications**: `app.py` (Streamlit UI), `main.py` (CLI + benchmark), `api.py` (FastAPI)
+- **Core**: `src/vcf_processor.py`, `src/variant_db.py`, `src/agent_engine.py`, `src/vector_search.py`
+- **Benchmark**: `cpic_examples.json`
+- **Tests**: `tests/validation_tests.py`, `tests/quick_test.py`
+- **Setup**: `scripts/data_initializer.py`, `scripts/setup_pinecone_index.py`
 
 ### Important Paths
 
@@ -199,34 +219,34 @@ When reporting issues, include:
 ## 🎯 Documentation Roadmap
 
 **Current Status**:
-- ✅ Complete setup and usage guides
-- ✅ Comprehensive troubleshooting
-- ✅ Technical implementation details
-- ✅ Research validation and review
-- ✅ Conceptual explanations
+- ✅ Setup, usage, implementation, deployment data, Docker
+- ✅ Variant interpretation (allele map, benchmark mode) documented
+- ✅ RAG transparency (UI/API context) and multi-chromosome profiles
+- ✅ Safety disclaimers and research-prototype wording
+- ✅ Conceptual guides and paper review
 
 **Future Additions**:
-- 🔄 API documentation (auto-generated)
-- 🔄 Deployment guide (production setup)
-- 🔄 Contributing guide (for developers)
-- 🔄 Performance optimization guide
+- 🔄 API reference (auto-generated)
+- 🔄 HLA-B*57:01 (abacavir) when HLA typing is added
+- 🔄 Contributing guide
 
 ---
 
 ## 📊 System Overview
 
-**SynthaTrial** is an In Silico Pharmacogenomics Platform (Version 0.3 Beta) that:
+**SynthaTrial** is an In Silico Pharmacogenomics Platform (Version 0.2 Beta) that:
 
-- Simulates drug effects on synthetic patient cohorts using Agentic AI
-- Processes VCF files to extract genetic variants (Big 3 enzymes)
-- Uses vector similarity search to find related drugs
-- Employs LLMs with RAG for pharmacogenomics predictions
-- Follows CPIC guidelines for clinical accuracy
+- **Simulates** drug–gene interactions using Agentic AI (research prototype; not for clinical use)
+- **Processes VCFs** for multiple chromosomes (chr2, 10, 12, 22) with auto-discovery
+- **Calls alleles** (*1, *2, *4…) and maps to function via PharmVar/CPIC-style table (`variant_db.ALLELE_FUNCTION_MAP`)
+- **Profiles** CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1; planned: HLA-B*57:01
+- **RAG**: Retrieves similar drugs (ChEMBL/Pinecone or mock), then LLM prediction; **UI and API expose** similar drugs used, genetics summary, and sources
+- **Evaluation**: `--benchmark cpic_examples.json` for predicted vs expected phenotype and match %
 
 **Target Users**: Researchers, drug developers, bioinformatics professionals, educators
 
-**Status**: Research prototype (not for clinical decision-making)
+**Status**: Research prototype — simulation and explanation only; **not for clinical decision-making**. See [Setup](setup.md), [Usage](usage.md), [Deployment data](DEPLOYMENT_DATA.md) for current workflows.
 
 ---
 
-*For the most up-to-date information, see the individual documentation files. Last updated: Documentation restructure.*
+*For the most up-to-date information, see the individual documentation files.*

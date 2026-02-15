@@ -2,6 +2,8 @@
 
 Complete setup guide for the SynthaTrial pharmacogenomics platform.
 
+> **⚠️ Safety disclaimer** — SynthaTrial is a **research prototype**. Outputs are synthetic predictions and must not be used for clinical decision-making. Not medical advice.
+
 ## Quick Start
 
 ### 1. Activate Environment
@@ -30,18 +32,20 @@ PINECONE_API_KEY="your_pinecone_api_key"
 
 ### 4. Quick Test (Big 3 Enzymes - Recommended)
 ```bash
-# Download VCF files (optional - for real genetic data)
-mkdir -p data/genomes && cd data/genomes
-wget https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz
-wget https://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes/phase3/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz
-cd ../..
+# Download VCF files (optional - for real genetic data). Use v5b (EBI); see docs/VCF_CHROMOSOME_SET.md.
+python scripts/data_initializer.py --vcf chr22 chr10
+# Or manually: mkdir -p data/genomes && curl -L -o data/genomes/chr22.vcf.gz \
+#   https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
 
-# Test with Warfarin (CYP2C9 substrate)
-python main.py \
-  --vcf data/genomes/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
-  --vcf-chr10 data/genomes/ALL.chr10.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz \
-  --drug-name Warfarin \
-  --drug-smiles "CC(=O)CC(c1ccc(OC)cc1)c1c(O)c2ccccc2oc1=O"
+# Test with Warfarin (CYP2C9 substrate). App auto-discovers VCFs in data/genomes.
+python main.py --drug-name Warfarin --drug-smiles "CC(=O)CC(c1ccc(OC)cc1)c1c(O)c2ccccc2oc1=O"
+# Or with explicit paths: python main.py --vcf data/genomes/chr22.vcf.gz --vcf-chr10 data/genomes/chr10.vcf.gz --drug-name Warfarin
+
+# Optional: run evaluation benchmark (no VCF needed)
+python main.py --benchmark cpic_examples.json
+
+# Optional: start API for Streamlit UI backend
+python api.py   # default port 8000
 ```
 
 ---

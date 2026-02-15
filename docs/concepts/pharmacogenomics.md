@@ -1,5 +1,9 @@
 # Pharmacogenomics Concepts
 
+> **Note:** SynthaTrial is a research prototype for simulation and explanation. It is not a certified clinical pharmacogenomics predictor; its outputs must not be used for clinical decision-making.
+
+**In SynthaTrial:** Genes covered are CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). Allele calling (*1, *2, *4…) is mapped to function via a PharmVar/CPIC-style table (`variant_db.ALLELE_FUNCTION_MAP`). Evaluation mode: `python main.py --benchmark cpic_examples.json`. See [Implementation](implementation.md) and [Usage](usage.md).
+
 ## What is Pharmacogenomics?
 
 Pharmacogenomics is the study of how an individual's genetic makeup affects their response to drugs. It combines pharmacology (the science of drugs) and genomics (the study of genes and their functions).

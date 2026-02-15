@@ -1,6 +1,6 @@
 # SSL Certificate Setup Guide
 
-This guide covers SSL certificate setup for SynthaTrial's Docker deployment with automatic HTTPS redirection and enhanced security.
+This guide covers SSL certificate setup for SynthaTrial's Docker deployment with automatic HTTPS redirection and enhanced security. *SynthaTrial is a research prototype; outputs must not be used for clinical decision-making.*
 
 ## Overview
 

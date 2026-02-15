@@ -1,5 +1,7 @@
 # Retrieval-Augmented Generation (RAG) Explained
 
+*SynthaTrial is a research prototype; its outputs must not be used for clinical decision-making.*
+
 ## What is RAG?
 
 **Retrieval-Augmented Generation (RAG)** is a technique that combines:

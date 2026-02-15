@@ -2,6 +2,8 @@
 
 Complete guide for using the SynthaTrial pharmacogenomics platform.
 
+> **⚠️ Safety disclaimer** — SynthaTrial is a **research prototype**. Outputs are synthetic predictions and must not be used for clinical decision-making. Not medical advice.
+
 ## Quick Start
 
 ### Web Interface (Recommended)
@@ -11,10 +13,12 @@ streamlit run app.py
 ```
 
 Open your browser to `http://localhost:8501` for the interactive web interface with:
-- Modern gradient UI
-- Patient profile builder
-- Example drug cases
-- Real-time validation
+- Modern gradient UI and safety disclaimer
+- Patient profile builder (genetics: CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1)
+- **Prediction context panel**: shows similar drugs used, genetics summary, and data sources (ChEMBL/Pinecone or mock)
+- Example drug cases and real-time validation
+
+**Backend API** (optional): Run `python api.py` (or uvicorn) so the UI can call `/analyze`; the response includes `similar_drugs_used`, `genetics_summary`, and `context_sources` for transparency.
 
 ### Command Line Interface
 
@@ -30,7 +34,12 @@ python main.py \
 
 # Manual patient profile
 python main.py --cyp2d6-status poor_metabolizer --drug-name Tramadol
+
+# Evaluation mode (CPIC-style benchmark: predicted vs expected phenotype, match %)
+python main.py --benchmark cpic_examples.json
 ```
+
+**Note:** If VCFs exist in `data/genomes/`, you can omit `--vcf` and `--vcf-chr10`; the app auto-discovers chr22, chr10, chr2, chr12 and uses them for profile generation (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1).
 
 ---
 
@@ -40,12 +49,13 @@ python main.py --cyp2d6-status poor_metabolizer --drug-name Tramadol
 
 | Argument | Description | Example |
 |----------|-------------|---------|
+| `--benchmark` | Run evaluation: JSON file with gene/alleles/expected_phenotype; output match % | `cpic_examples.json` |
 | `--drug-name` | Name of the drug | `Warfarin` |
 | `--drug-smiles` | SMILES string of the drug | `CC(=O)Nc1ccc(O)cc1` |
-| `--vcf` | Path to chromosome 22 VCF file (CYP2D6) | `data/genomes/chr22.vcf.gz` |
-| `--vcf-chr10` | Path to chromosome 10 VCF file (CYP2C19, CYP2C9) | `data/genomes/chr10.vcf.gz` |
-| `--sample-id` | Specific sample ID from VCF | `HG00096` |
-| `--cyp2d6-status` | Manual CYP2D6 status | `poor_metabolizer` |
+| `--vcf` | Path to chromosome 22 VCF (CYP2D6); optional if discovered in data/genomes | `data/genomes/chr22.vcf.gz` |
+| `--vcf-chr10` | Path to chr10 VCF (CYP2C19, CYP2C9); optional if discovered | `data/genomes/chr10.vcf.gz` |
+| `--sample-id` | Sample ID from VCF | `HG00096` |
+| `--cyp2d6-status` | Manual CYP2D6 status (if not using VCF) | `poor_metabolizer` |
 
 ### Metabolizer Status Options
 
@@ -91,7 +101,19 @@ python main.py \
 - **CYP2C19** (Chr10): Clopidogrel, Omeprazole, PPIs
 - **CYP2C9** (Chr10): Warfarin, Ibuprofen, Phenytoin, NSAIDs
 
-### Mode 3: Manual Patient Profile
+When chr2 and chr12 VCFs are present, **UGT1A1** (irinotecan) and **SLCO1B1** (statins) are also included in the profile. Profiles may show **allele calls** (e.g. CYP2D6 *1/*4) when inferred from VCF.
+
+### Mode 3: Evaluation (Benchmark)
+
+**Use Case**: Validate phenotype prediction against CPIC-style expected outcomes (research tool).
+
+```bash
+python main.py --benchmark cpic_examples.json
+```
+
+Output: table of gene, alleles, expected phenotype, predicted phenotype, match; then overall match %. Example file `cpic_examples.json` contains entries like `{"gene": "CYP2D6", "alleles": ["*1", "*4"], "expected_phenotype": "intermediate_metabolizer"}`.
+
+### Mode 4: Manual Patient Profile
 
 **Use Case**: Testing without VCF files or custom patient scenarios
 
@@ -189,7 +211,7 @@ python main.py \
 Patient Profile:
 ID: HG00096
 Age: 45
-Genetics: CYP2D6 Extensive Metabolizer, CYP2C19 Poor Metabolizer, CYP2C9 Intermediate Metabolizer
+Genetics: CYP2D6 *1/*4 (Intermediate Metabolizer), CYP2C19 Poor Metabolizer, CYP2C9 *1/*3 (Extensive Metabolizer)
 Conditions: Chronic Liver Disease (Mild)
 Lifestyle: Alcohol: Moderate, Smoking: Non-smoker
 Source: 1000 Genomes Project VCF
@@ -217,6 +239,16 @@ BIOLOGICAL MECHANISM: CYP2C9 intermediate metabolizer status leads to...
 - **LOW RISK**: Minimal impact, standard dosing appropriate
 - **MEDIUM RISK**: Moderate consequences, manageable with dose adjustment or monitoring
 - **HIGH RISK**: Severe consequences, alternative drug recommended or contraindicated
+
+### Prediction Context (RAG Transparency)
+
+In the **Streamlit UI**, after running an analysis, expand **"Prediction context (how this was derived)"**. You will see:
+
+- **Genetics used**: The genetics line from the patient profile (e.g. CYP2D6 Poor Metabolizer, CYP2C9 *1/*3 (Extensive Metabolizer))
+- **Similar drugs retrieved**: Names of drugs from vector search (ChEMBL/Pinecone or mock) used as RAG context
+- **Sources**: Whether data came from "ChEMBL (via Pinecone)" or "Mock data (no Pinecone key)"
+
+The **API** (`POST /analyze`) returns the same in the response: `similar_drugs_used`, `genetics_summary`, `context_sources`. This makes the prediction auditable and suitable for research use.
 
 ---
 

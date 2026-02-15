@@ -2,6 +2,8 @@
 
 This document provides comprehensive information about SynthaTrial's CI/CD pipeline implementation using GitHub Actions.
 
+> **Note:** SynthaTrial is a research prototype; its outputs must not be used for clinical decision-making.
+
 ## Overview
 
 SynthaTrial uses a comprehensive CI/CD pipeline that automates:

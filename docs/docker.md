@@ -2,6 +2,8 @@
 
 Complete guide for running SynthaTrial in Docker containers with professional-grade automation, security, and monitoring capabilities.
 
+> **⚠️ Safety disclaimer** — SynthaTrial is a **research prototype**. Outputs must not be used for clinical decision-making. For VCF/ChEMBL data at deploy time, see [Deployment data](DEPLOYMENT_DATA.md).
+
 ## Quick Start
 
 ### Prerequisites

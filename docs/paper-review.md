@@ -2,6 +2,8 @@
 
 Comprehensive review of the research paper for publication readiness.
 
+> **⚠️ Safety disclaimer** — SynthaTrial is a **research prototype** (simulation and explanation engine), not a certified pharmacogenomics predictor. Outputs must not be used for clinical decision-making.
+
 ## Executive Summary
 
 **Status**: ✅ **READY FOR SUBMISSION**

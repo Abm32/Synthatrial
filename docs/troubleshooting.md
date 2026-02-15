@@ -2,6 +2,8 @@
 
 Complete troubleshooting guide for common issues and their solutions.
 
+> **⚠️ Safety disclaimer** — SynthaTrial is a **research prototype**. Outputs must not be used for clinical decision-making.
+
 ## Quick Diagnostics
 
 ### System Check
@@ -31,6 +33,14 @@ ls -la data/genomes/*.vcf.gz
 ```bash
 python tests/quick_test.py
 ```
+
+### Evaluation benchmark (no VCF required)
+
+```bash
+python main.py --benchmark cpic_examples.json
+```
+
+Expect a table of predicted vs expected phenotype and an overall match %. If the API or UI are used, ensure the backend returns `similar_drugs_used`, `genetics_summary`, and `context_sources` for RAG transparency.
 
 ---
 

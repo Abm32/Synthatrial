@@ -1,5 +1,7 @@
 # Vector Databases and Similarity Search
 
+*SynthaTrial is a research prototype; its outputs must not be used for clinical decision-making.*
+
 ## What is a Vector Database?
 
 A vector database is a specialized database designed to store and search high-dimensional vectors (arrays of numbers). Unlike traditional databases that search by exact matches, vector databases find similar items based on mathematical distance.
