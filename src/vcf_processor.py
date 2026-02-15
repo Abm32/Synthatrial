@@ -12,7 +12,12 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
 from .exceptions import VCFProcessingError
-from .variant_db import VARIANT_DB, get_phenotype_prediction, get_variant_info
+from .variant_db import (
+    VARIANT_DB,
+    get_allele_interpretation,
+    get_phenotype_prediction,
+    get_variant_info,
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -37,6 +42,10 @@ CYP_GENE_LOCATIONS = {
     # Transporters
     "SLCO1B1": {"chrom": "12", "start": 21288593, "end": 21397223},
 }
+
+# Genes included in patient profile (must have VARIANT_DB entry and CYP_GENE_LOCATIONS).
+# Order: Big 3 CYPs first, then Phase II / transporters.
+PROFILE_GENES = ["CYP2D6", "CYP2C19", "CYP2C9", "UGT1A1", "SLCO1B1"]
 
 # Star Allele to Activity Score Mapping
 # Based on CPIC/PharmVar guidelines
@@ -372,6 +381,90 @@ def infer_metabolizer_status(
     return phenotype
 
 
+def infer_metabolizer_status_with_alleles(
+    variants: List[Dict], sample_id: str, gene: str = "CYP2D6"
+) -> Dict:
+    """
+    Infer metabolizer status and return allele-level interpretation for transparency.
+    Returns phenotype, called alleles, allele call string (e.g. *1/*4), and PharmVar-style interpretations.
+    """
+    result = {
+        "phenotype": "extensive_metabolizer",
+        "alleles": [],
+        "allele_call": "",
+        "interpretation": [],
+    }
+    if not variants:
+        result["allele_call"] = "*1/*1"
+        result["interpretation"] = [f"{gene}*1: Normal function (wild-type)"]
+        return result
+
+    gene_db = VARIANT_DB.get(gene, {})
+    if not gene_db:
+        return result
+
+    found_alleles: List[str] = []
+    copy_number = 2
+    has_deletion = False
+
+    for variant in variants:
+        if sample_id not in variant.get("samples", {}):
+            continue
+        genotype = variant["samples"][sample_id]
+        rsid = variant.get("id", "")
+        if genotype in ["0/0", "0|0", ".", "./.", ".|."]:
+            continue
+        alt = str(variant.get("alt", ""))
+        info = str(variant.get("info", ""))
+        if "<DEL>" in alt or "DEL" in info.upper():
+            has_deletion = True
+            found_alleles.append(f"{gene}_DEL")
+            copy_number = 0
+            continue
+        if "DUP" in alt.upper() or "DUP" in info.upper() or "MULTI" in info.upper():
+            copy_number = 3
+            found_alleles.append(f"{gene}_DUP")
+            continue
+        if rsid in gene_db:
+            variant_info = gene_db[rsid]
+            allele = variant_info["allele"]
+            is_variant = False
+            if "/" in genotype:
+                alleles = genotype.split("/")
+                if len(alleles) == 2 and (alleles[0] != "0" or alleles[1] != "0"):
+                    is_variant = True
+            elif "|" in genotype:
+                alleles = genotype.split("|")
+                if len(alleles) == 2 and (alleles[0] != "0" or alleles[1] != "0"):
+                    is_variant = True
+            if is_variant:
+                found_alleles.append(allele)
+
+    result["phenotype"] = get_phenotype_prediction(gene, found_alleles, copy_number)
+    result["alleles"] = found_alleles
+    if not found_alleles:
+        result["allele_call"] = "*1/*1"
+        result["interpretation"] = [f"{gene}*1: Normal function (wild-type)"]
+    else:
+        result["allele_call"] = "/".join(sorted(set(found_alleles)))
+        result["interpretation"] = get_allele_interpretation(gene, found_alleles)
+    return result
+
+
+def _chrom_key_for_gene(gene: str) -> Optional[str]:
+    """Return VCF chromosome key for a gene (e.g. CYP2D6 -> chr22)."""
+    loc = CYP_GENE_LOCATIONS.get(gene)
+    if not loc:
+        return None
+    c = loc["chrom"].upper()
+    if c == "X" or c == "Y":
+        return f"chr{c}"
+    try:
+        return f"chr{int(c)}"
+    except (TypeError, ValueError):
+        return None
+
+
 def generate_patient_profile_from_vcf(
     vcf_path: str,
     sample_id: str,
@@ -379,88 +472,85 @@ def generate_patient_profile_from_vcf(
     conditions: Optional[List[str]] = None,
     lifestyle: Optional[Dict[str, str]] = None,
     vcf_path_chr10: Optional[str] = None,
+    vcf_paths_by_chrom: Optional[Dict[str, str]] = None,
 ) -> str:
     """
     Generate a synthetic patient profile from VCF data.
-    Supports both single VCF file (chromosome 22) and multiple VCF files (chr22 + chr10).
+    Uses chr22 (CYP2D6), chr10 (CYP2C19, CYP2C9), chr2 (UGT1A1), chr12 (SLCO1B1)
+    when the corresponding VCF files are provided via vcf_paths_by_chrom or legacy args.
 
     Args:
-        vcf_path: Path to VCF file (typically chromosome 22 for CYP2D6)
+        vcf_path: Path to primary VCF (chr22 for CYP2D6); used if vcf_paths_by_chrom not set.
         sample_id: Sample ID from VCF file
         age: Patient age (random if not provided)
         conditions: List of medical conditions
         lifestyle: Dictionary with 'alcohol' and 'smoking' keys
-        vcf_path_chr10: Optional path to chromosome 10 VCF file (for CYP2C9 and CYP2C19)
-
+        vcf_path_chr10: Optional path to chr10 (CYP2C9/CYP2C19); used if vcf_paths_by_chrom not set.
+        vcf_paths_by_chrom: Optional dict chromosome -> path (e.g. {"chr22": path, "chr10": path,
+            "chr2": path, "chr12": path}). When set, overrides vcf_path/vcf_path_chr10 for lookups.
     Returns:
         Formatted patient profile string
     """
     import random
 
-    # Extract CYP variants from chromosome 22 (CYP2D6)
-    cyp2d6_variants = []
-    chrom = vcf_path.split("/")[-1]
+    # Build chromosome -> path map: prefer vcf_paths_by_chrom, else legacy args
+    if vcf_paths_by_chrom:
+        paths = {k: p for k, p in vcf_paths_by_chrom.items() if p and os.path.exists(p)}
+    else:
+        paths = {}
+        if vcf_path and os.path.exists(vcf_path):
+            paths["chr22"] = vcf_path
+        if vcf_path_chr10 and os.path.exists(vcf_path_chr10):
+            paths["chr10"] = vcf_path_chr10
 
-    if "chr22" in chrom.lower() or "22" in chrom:
+    # Extract variants and infer status for each profile gene from the correct chromosome VCF
+    gene_variants: Dict[str, List] = {g: [] for g in PROFILE_GENES}
+    for gene in PROFILE_GENES:
+        chr_key = _chrom_key_for_gene(gene)
+        if not chr_key:
+            continue
+        vcf_file = paths.get(chr_key)
+        if not vcf_file:
+            continue
         try:
-            cyp2d6_variants = extract_cyp_variants(vcf_path, "CYP2D6", sample_limit=1)
+            gene_variants[gene] = extract_cyp_variants(
+                vcf_file, gene, sample_limit=1
+            )
+            if gene_variants[gene]:
+                logger.info(
+                    f"Extracted {len(gene_variants[gene])} {gene} variants from {chr_key}"
+                )
         except Exception as e:
-            logger.warning(f"Could not extract CYP2D6 variants: {e}")
+            logger.warning(f"Could not extract {gene} variants from {chr_key}: {e}")
 
-    # Extract CYP variants from chromosome 10 (CYP2C9 and CYP2C19)
-    cyp2c19_variants = []
-    cyp2c9_variants = []
+    # Infer status and allele-level interpretation per gene (for transparency)
+    def _status_and_alleles(gene: str, default: str = "extensive_metabolizer") -> Tuple[str, Optional[str], List[str]]:
+        if gene == "SLCO1B1":
+            default = "average_function"
+        if not gene_variants[gene]:
+            return default, None, []
+        info = infer_metabolizer_status_with_alleles(gene_variants[gene], sample_id, gene=gene)
+        return info["phenotype"], info.get("allele_call"), info.get("interpretation", [])
 
-    if vcf_path_chr10 and os.path.exists(vcf_path_chr10):
-        try:
-            cyp2c19_variants = extract_cyp_variants(
-                vcf_path_chr10, "CYP2C19", sample_limit=1
-            )
-            logger.info(
-                f"Extracted {len(cyp2c19_variants)} CYP2C19 variants from chromosome 10"
-            )
-        except Exception as e:
-            logger.warning(f"Could not extract CYP2C19 variants: {e}")
-
-        try:
-            cyp2c9_variants = extract_cyp_variants(
-                vcf_path_chr10, "CYP2C9", sample_limit=1
-            )
-            logger.info(
-                f"Extracted {len(cyp2c9_variants)} CYP2C9 variants from chromosome 10"
-            )
-        except Exception as e:
-            logger.warning(f"Could not extract CYP2C9 variants: {e}")
-
-    # Infer metabolizer statuses using improved Activity Score method
-    cyp2d6_status = (
-        infer_metabolizer_status(cyp2d6_variants, sample_id, gene="CYP2D6")
-        if cyp2d6_variants
-        else "extensive_metabolizer"
-    )
-    cyp2c19_status = (
-        infer_metabolizer_status(cyp2c19_variants, sample_id, gene="CYP2C19")
-        if cyp2c19_variants
-        else "extensive_metabolizer"
-    )
-    cyp2c9_status = (
-        infer_metabolizer_status(cyp2c9_variants, sample_id, gene="CYP2C9")
-        if cyp2c9_variants
-        else "extensive_metabolizer"
-    )
-
-    # Build genetics text (include all detected enzymes)
     genetics_parts = []
-    if cyp2d6_status != "extensive_metabolizer":
-        genetics_parts.append(f"CYP2D6 {cyp2d6_status.replace('_', ' ').title()}")
-    if cyp2c19_status != "extensive_metabolizer":
-        genetics_parts.append(f"CYP2C19 {cyp2c19_status.replace('_', ' ').title()}")
-    if cyp2c9_status != "extensive_metabolizer":
-        genetics_parts.append(f"CYP2C9 {cyp2c9_status.replace('_', ' ').title()}")
+    for gene in PROFILE_GENES:
+        status, allele_call, interpretation = _status_and_alleles(gene)
+        s = status
+        if s == "extensive_metabolizer" and gene != "SLCO1B1":
+            continue
+        if gene == "SLCO1B1" and s == "average_function":
+            continue
+        term = s.replace("_", " ").title()
+        if gene == "SLCO1B1":
+            term = term.replace("Metabolizer", "Function")
+        # Include allele call when available (e.g. "CYP2D6 *1/*4 (Poor Metabolizer)")
+        if allele_call and allele_call != "*1/*1":
+            genetics_parts.append(f"{gene} {allele_call} ({term})")
+        else:
+            genetics_parts.append(f"{gene} {term}")
 
-    # Default to extensive metabolizer if no variants found
     if not genetics_parts:
-        genetics_text = "CYP2D6 Extensive Metabolizer"
+        genetics_text = "CYP2D6 Extensive Metabolizer (Normal)"
     else:
         genetics_text = ", ".join(genetics_parts)
 
@@ -492,21 +582,11 @@ def generate_patient_profile_multi_chromosome(
     age: Optional[int] = None,
     conditions: Optional[List[str]] = None,
     lifestyle: Optional[Dict[str, str]] = None,
+    vcf_paths_by_chrom: Optional[Dict[str, str]] = None,
 ) -> str:
     """
-    Generate patient profile from multiple VCF files (chromosomes 22 and 10).
-    This function extracts variants for all "Big 3" enzymes: CYP2D6, CYP2C19, CYP2C9.
-
-    Args:
-        vcf_path_chr22: Path to chromosome 22 VCF file (for CYP2D6)
-        vcf_path_chr10: Path to chromosome 10 VCF file (for CYP2C9 and CYP2C19)
-        sample_id: Sample ID from VCF file
-        age: Patient age (random if not provided)
-        conditions: List of medical conditions
-        lifestyle: Dictionary with 'alcohol' and 'smoking' keys
-
-    Returns:
-        Formatted patient profile string with all CYP enzyme statuses
+    Generate patient profile from multiple VCF files.
+    When vcf_paths_by_chrom is provided, uses it for all chromosomes (chr2, chr10, chr12, chr22, etc.).
     """
     return generate_patient_profile_from_vcf(
         vcf_path_chr22,
@@ -515,19 +595,13 @@ def generate_patient_profile_multi_chromosome(
         conditions=conditions,
         lifestyle=lifestyle,
         vcf_path_chr10=vcf_path_chr10,
+        vcf_paths_by_chrom=vcf_paths_by_chrom,
     )
 
 
 def get_sample_ids_from_vcf(vcf_path: str, limit: Optional[int] = 10) -> List[str]:
     """
     Get list of sample IDs from VCF file header.
-
-    Args:
-        vcf_path: Path to VCF file
-        limit: Maximum number of samples to return (None = all)
-
-    Returns:
-        List of sample IDs
     """
     open_func = gzip.open if vcf_path.endswith(".gz") else open
     mode = "rt" if vcf_path.endswith(".gz") else "r"
@@ -546,3 +620,47 @@ def get_sample_ids_from_vcf(vcf_path: str, limit: Optional[int] = 10) -> List[st
     except Exception as e:
         print(f"Error reading VCF header: {e}")
         return []
+
+
+# Chromosomes supported for discovery (autosomes 1-22, X, Y).
+# Order: longest token first so "chr22" matches before "chr2".
+SUPPORTED_CHROMOSOMES_ORDER: Tuple[str, ...] = tuple(
+    sorted(
+        [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"],
+        key=lambda x: -len(x),
+    )
+)
+
+def discover_vcf_paths(genomes_dir: str = "data/genomes") -> Dict[str, str]:
+    """
+    Discover VCF files in data/genomes and map them to chromosomes.
+
+    Accepts both short names (chr22.vcf.gz, chr10.vcf.gz) and long 1000 Genomes
+    names (e.g. ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz).
+    Returns a dict mapping chromosome key to absolute path, e.g. {"chr22": path, "chr10": path}.
+    Any chr1–chr22, chrX, chrY present in the filename is detected.
+    """
+    if not os.path.isdir(genomes_dir):
+        return {}
+    found: Dict[str, str] = {}
+    try:
+        for name in os.listdir(genomes_dir):
+            if not name.endswith(".vcf.gz"):
+                continue
+            path = os.path.join(genomes_dir, name)
+            if not os.path.isfile(path):
+                continue
+            # Match all chrN/chrX/chrY in filename; take first that we support (longest-first)
+            for c in SUPPORTED_CHROMOSOMES_ORDER:
+                if c not in name:
+                    continue
+                idx = name.find(c)
+                next_char = name[idx + len(c) : idx + len(c) + 1]
+                if next_char and next_char.isdigit():
+                    continue
+                if c not in found:
+                    found[c] = os.path.abspath(path)
+                break
+    except OSError as e:
+        logger.warning(f"Could not list genomes dir {genomes_dir}: {e}")
+    return found

@@ -8,6 +8,91 @@ This replaces naive variant counting with targeted allele lookup based on
 specific rsIDs (Reference SNP IDs) that are known to affect enzyme function.
 """
 
+from typing import Dict, List, Optional, Tuple
+
+# ---------------------------------------------------------------------------
+# Allele → Function mapping (PharmVar/CPIC-style)
+# Grounds metabolizer inference in allele calling. Format: "GENE*allele" -> clinical interpretation
+# Used for transparent interpretation and benchmark evaluation.
+# ---------------------------------------------------------------------------
+ALLELE_FUNCTION_MAP: Dict[str, str] = {
+    # CYP2D6 (PharmVar)
+    "CYP2D6*1": "Normal function",
+    "CYP2D6*2": "Normal function",
+    "CYP2D6*3": "No function",
+    "CYP2D6*4": "No function",
+    "CYP2D6*5": "No function (gene deletion)",
+    "CYP2D6*6": "No function",
+    "CYP2D6*9": "Reduced function",
+    "CYP2D6*10": "Reduced function",
+    "CYP2D6*17": "Reduced function",
+    "CYP2D6*41": "Reduced function",
+    "CYP2D6*1xN": "Increased function (duplication)",
+    # CYP2C19 (PharmVar)
+    "CYP2C19*1": "Normal function",
+    "CYP2C19*2": "Loss of function",
+    "CYP2C19*3": "Loss of function",
+    "CYP2C19*4": "Loss of function",
+    "CYP2C19*5": "Loss of function (gene deletion)",
+    "CYP2C19*8": "Loss of function",
+    "CYP2C19*9": "Reduced function",
+    "CYP2C19*17": "Increased function",
+    # CYP2C9 (PharmVar)
+    "CYP2C9*1": "Normal function",
+    "CYP2C9*2": "Reduced function",
+    "CYP2C9*3": "Reduced function",
+    "CYP2C9*5": "Reduced function",
+    "CYP2C9*6": "No function",
+    "CYP2C9*8": "Reduced function",
+    "CYP2C9*11": "Reduced function",
+    # UGT1A1
+    "UGT1A1*1": "Normal function",
+    "UGT1A1*28": "Reduced function",
+    "UGT1A1*6": "Reduced function",
+    # SLCO1B1 (transporter)
+    "SLCO1B1*1": "Normal function",
+    "SLCO1B1*5": "Loss of function",
+    "SLCO1B1*15": "Reduced function",
+    # Future: HLA-B*57:01 (abacavir hypersensitivity) - add when implementing HLA typing
+    # "HLA-B*57:01": "Positive – abacavir hypersensitivity risk"
+}
+
+# Genes currently supported for allele→function mapping and profile.
+# Beyond CYP Big 3: UGT1A1 (irinotecan), SLCO1B1 (statins) are implemented.
+# Planned: HLA-B*57:01 (abacavir) for DILI/hypersensitivity.
+SUPPORTED_PROFILE_GENES = ["CYP2D6", "CYP2C19", "CYP2C9", "UGT1A1", "SLCO1B1"]
+
+
+def get_allele_function(gene: str, allele: str) -> Optional[str]:
+    """
+    Return PharmVar/CPIC-style function string for a gene*allele.
+    E.g. get_allele_function("CYP2D6", "*4") -> "No function"
+    """
+    key = f"{gene}{allele}" if allele.startswith("*") else f"{gene}*{allele}"
+    return ALLELE_FUNCTION_MAP.get(key)
+
+
+def get_allele_interpretation(gene: str, alleles_found: List[str]) -> List[str]:
+    """
+    Return list of interpretation strings for display, e.g. ["CYP2D6*4: No function"].
+    Structural variants (DEL/DUP) are included.
+    """
+    out: List[str] = []
+    for a in alleles_found:
+        if "_DEL" in str(a) or a == f"{gene}_DEL":
+            out.append(f"{gene}*5 (gene deletion): No function")
+            continue
+        if "_DUP" in str(a) or a == f"{gene}_DUP":
+            out.append(f"{gene} duplication: Increased function")
+            continue
+        func = get_allele_function(gene, a)
+        if func:
+            out.append(f"{gene}{a}: {func}")
+        else:
+            out.append(f"{gene}{a}: (see PharmVar)")
+    return out
+
+
 # Critical Pharmacogenomic Variants (The "Famous" Ones)
 # Source: PharmVar and CPIC Guidelines
 
@@ -166,6 +251,42 @@ VARIANT_DB = {
             "activity_score": 0.0,
         },
     },
+    # --- Phase II Enzymes (Conjugation) ---
+    "UGT1A1": {
+        "rs8175347": {
+            "allele": "*28",
+            "impact": "Reduced",
+            "name": "TA Repeat Insertion",
+            "activity_score": 0.5, # Reduced expression
+        },
+        "rs4148323": {
+            "allele": "*6",
+            "impact": "Reduced",
+            "name": "G71R",
+            "activity_score": 0.5,
+        },
+        "rs3064744": { # Gilbert's syndrome marker (often linked to *28)
+             "allele": "*28", # Linked
+             "impact": "Reduced",
+             "name": "Promoter Variant",
+             "activity_score": 0.5,
+        }
+    },
+    # --- Transporters ---
+    "SLCO1B1": {
+        "rs4149056": {
+            "allele": "*5",
+            "impact": "Reduced Transport",
+            "name": "Val174Ala",
+            "activity_score": 0.0, # Loss of function
+        },
+        "rs2306283": {
+            "allele": "*15",
+            "impact": "Reduced Transport",
+            "name": "Asp130Asn",
+            "activity_score": 0.5,
+        }
+    }
 }
 
 
@@ -236,6 +357,12 @@ def get_phenotype_prediction(
         for allele in alleles_found:
             # Skip structural variant markers (handled above)
             if f"{gene}_DEL" in str(allele) or f"{gene}_DUP" in str(allele):
+                continue
+
+            # Wild-type *1 is normal function (1.0) and may not be in VARIANT_DB
+            if allele == "*1":
+                total_score += 1.0
+                matched_alleles_count += 1
                 continue
 
             # Find variant info by allele name
