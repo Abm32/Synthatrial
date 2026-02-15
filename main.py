@@ -24,6 +24,7 @@ from src.vcf_processor import (
     get_sample_ids_from_vcf,
 )
 from src.vector_search import find_similar_drugs
+from src.warfarin_caller import interpret_warfarin
 
 # Set up logging
 setup_logging()
@@ -72,17 +73,39 @@ def run_benchmark(json_path: str) -> None:
         )
         variants_raw = row.get("variants") or {}
 
-        if (
-            expected_display
-            and variants_raw
-            and gene == "CYP2C19"
-            and _is_simple_variant_dict(variants_raw)
-        ):
-            result = interpret_cyp2c19(variants_raw)
-            predicted = result["phenotype"]
-            match = predicted == expected_display
-            alleles = result.get("alleles", "*1/*1")
-            expected_out = expected_display
+        # Warfarin: variants include VKORC1 (rs9923231) and optional CYP2C9; expected = recommendation text
+        if expected_display and variants_raw and _is_simple_variant_dict(variants_raw):
+            if gene == "Warfarin" or "rs9923231" in variants_raw:
+                result = interpret_warfarin(variants_raw)
+                predicted = result["recommendation"]
+                match = predicted == expected_display
+                alleles = f"{result['CYP2C9']} + {result['VKORC1']}"
+                expected_out = expected_display
+                gene = "Warfarin"
+            elif gene == "CYP2C19":
+                result = interpret_cyp2c19(variants_raw)
+                predicted = result["phenotype"]
+                match = predicted == expected_display
+                alleles = result.get("alleles", "*1/*1")
+                expected_out = expected_display
+            else:
+                variant_map = _variants_from_row(row)
+                if variant_map:
+                    cpic_result = call_gene_from_variants(gene, variant_map)
+                    if cpic_result:
+                        predicted = cpic_result["phenotype_normalized"]
+                        alleles = cpic_result.get("alleles_detected", [])
+                    else:
+                        predicted = "unknown"
+                        alleles = []
+                    expected_out = expected_normalized
+                    match = predicted == expected_normalized
+                else:
+                    alleles = row.get("alleles", [])
+                    copy_number = row.get("copy_number", 2)
+                    predicted = get_phenotype_prediction(gene, alleles, copy_number)
+                    expected_out = expected_normalized
+                    match = predicted == expected_normalized
         else:
             variant_map = _variants_from_row(row)
             if variant_map:
@@ -122,11 +145,7 @@ def run_benchmark(json_path: str) -> None:
     print("-" * 90)
     for r in results:
         al = r["alleles"]
-        alleles_str = (
-            al
-            if isinstance(al, str)
-            else (",".join(al) if al else "*1/*1")
-        )
+        alleles_str = al if isinstance(al, str) else (",".join(al) if al else "*1/*1")
         print(
             f"{r['gene']:<10} {alleles_str:<20} {r['expected']:<25} {r['predicted']:<25} {'Yes' if r['match'] else 'No':<6}"
         )

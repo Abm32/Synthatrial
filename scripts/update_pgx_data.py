@@ -40,9 +40,20 @@ def validate_pharmvar_tsv(path: Path) -> list[str]:
     if not lines:
         return ["Empty file"]
     header = lines[0].lower().split("\t")
-    for col in ("allele", "rsid", "alt", "function"):
-        if col not in header:
-            errs.append(f"Missing column: {col}")
+    # Allele table: allele, rsid, alt, function
+    if "allele" in header:
+        for col in ("allele", "rsid", "alt", "function"):
+            if col not in header:
+                errs.append(f"Missing column: {col}")
+    # Variant table (e.g. VKORC1): variant, rsid, risk_allele, effect
+    elif "variant" in header and "rsid" in header:
+        for col in ("variant", "rsid", "risk_allele", "effect"):
+            if col not in header:
+                errs.append(f"Missing column: {col}")
+    else:
+        errs.append(
+            "Expected allele (allele/rsid/alt/function) or variant (variant/rsid/risk_allele/effect) columns"
+        )
     if len(lines) < 2:
         errs.append("No data rows")
     return errs
@@ -136,10 +147,20 @@ def run_fetch_gene(gene: str) -> int:
     """
     gene = gene.lower()
     print(f"Gene: {gene}")
-    print("PharmVar: Download from", PHARMVAR_DOWNLOAD, "and save as", PHARMVAR_DIR / f"{gene}_alleles.tsv")
+    print(
+        "PharmVar: Download from",
+        PHARMVAR_DOWNLOAD,
+        "and save as",
+        PHARMVAR_DIR / f"{gene}_alleles.tsv",
+    )
     alleles = fetch_cpic_alleles_for_gene(gene)
     if alleles:
-        print("CPIC alleles response:", type(alleles), "length" if isinstance(alleles, list) else "keys", len(alleles) if isinstance(alleles, (list, dict)) else "N/A")
+        print(
+            "CPIC alleles response:",
+            type(alleles),
+            "length" if isinstance(alleles, list) else "keys",
+            len(alleles) if isinstance(alleles, (list, dict)) else "N/A",
+        )
     phenotypes = fetch_cpic_phenotypes_for_gene(gene)
     if phenotypes:
         out = CPIC_DIR / f"{gene}_phenotypes.json"
@@ -148,7 +169,12 @@ def run_fetch_gene(gene: str) -> int:
             json.dump(phenotypes, f, indent=2)
         print("Wrote", out)
     else:
-        print("CPIC phenotype table: use files from", CPIC_FILES_BASE, "or api.cpicpgx.org; then convert to", CPIC_DIR / f"{gene}_phenotypes.json")
+        print(
+            "CPIC phenotype table: use files from",
+            CPIC_FILES_BASE,
+            "or api.cpicpgx.org; then convert to",
+            CPIC_DIR / f"{gene}_phenotypes.json",
+        )
     return 0
 
 
@@ -156,9 +182,19 @@ def main():
     parser = argparse.ArgumentParser(
         description="Validate or optionally refresh PGx data (PharmVar/CPIC). See data/pgx/sources.md."
     )
-    parser.add_argument("--validate", action="store_true", help="Validate existing TSV/JSON in data/pgx/")
-    parser.add_argument("--gene", type=str, metavar="GENE", help="Gene to update (e.g. cyp2c19)")
-    parser.add_argument("--fetch", action="store_true", help="Try to fetch from CPIC/PharmVar (optional)")
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate existing TSV/JSON in data/pgx/",
+    )
+    parser.add_argument(
+        "--gene", type=str, metavar="GENE", help="Gene to update (e.g. cyp2c19)"
+    )
+    parser.add_argument(
+        "--fetch",
+        action="store_true",
+        help="Try to fetch from CPIC/PharmVar (optional)",
+    )
     args = parser.parse_args()
 
     if args.validate:

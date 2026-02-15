@@ -37,10 +37,11 @@ VCF and ChEMBL are **not** in the repo (gitignored). The app runs without them (
 | **chr10** | CYP2C19, CYP2C9 | ~700 MB | Recommended (Big 3) |
 | **chr2** | UGT1A1 | ~1.2 GB | Optional |
 | **chr12** | SLCO1B1 | ~700 MB | Optional |
+| **chr16** | VKORC1 (Warfarin sensitivity) | ~330 MB | Optional (for Warfarin PGx) |
 | **chr6, chr11, chr19** | Not yet implemented (reserved for future PGx genes) | ~915 MB, ~700 MB, ~330 MB | Downloadable; not used for profiles |
 | **ChEMBL** | Drug similarity (Pinecone) | ~1–2 GB | Optional (mock if missing) |
 
-If you have chr6, chr11, or chr19 in `data/genomes/`, they are discovered but **not used**—no genes are mapped to them. Only chr2, chr10, chr12, chr22 drive the patient genetics pipeline.
+If you have chr6, chr11, or chr19 in `data/genomes/`, they are discovered but **not used**—no genes are mapped to them. Chr2, chr10, chr12, chr16, and chr22 drive the patient genetics pipeline (chr16 for Warfarin VKORC1).
 
 **EBI 1000 Genomes (v5b):**
 Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`
@@ -50,6 +51,7 @@ Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`
 - chr10: `ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 - chr11: `ALL.chr11.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 - chr12: `ALL.chr12.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
+- chr16: `ALL.chr16.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 - chr19: `ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 - chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
 
@@ -88,6 +90,7 @@ Without any data, the app runs in manual profile mode with mock drug search. For
 | `python main.py --drug-name <name>` | CLI simulation (auto-discovers VCFs in `data/genomes/`) |
 | `python main.py --vcf <path> [--vcf-chr10 <path>] --drug-name Warfarin` | CLI with explicit VCFs |
 | `python main.py --benchmark cpic_examples.json` | Evaluation: predicted vs expected phenotype, match %. Supports allele-based (`expected_phenotype`) and CYP2C19 variant-based (`variants` + `expected` display). |
+| `python main.py --benchmark warfarin_examples.json` | Warfarin PGx benchmark: CYP2C9 + VKORC1 deterministic calling vs expected recommendation. |
 | `python scripts/update_pgx_data.py --validate` | Validate `data/pgx/` TSV and JSON. Use `--gene cyp2c19` for optional refresh. |
 | `python tests/quick_test.py` | Quick integration test |
 | `python tests/validation_tests.py` | Full test suite |
@@ -105,7 +108,7 @@ User Input (Drug SMILES + Patient Profile)
     ↓
 [Vector Search] → Similar drugs (ChEMBL/Pinecone or mock)
     ↓
-[VCF Processor] → Variants + allele calling (chr22, 10, 2, 12)
+[VCF Processor] → Variants + allele calling (chr22, 10, 2, 12, 16)
     ↓
 [Variant DB] → PharmVar/CPIC allele→function → metabolizer status
     ↓
@@ -116,7 +119,7 @@ Output: risk level, interpretation, + RAG context (similar drugs, genetics, sour
 
 **Trust boundaries:** Deterministic PGx core (CPIC/PharmVar) + generative interpretation layer (LLM). Allele calling and phenotype translation use versioned tables only; the LLM adds free-text interpretation and is audited via RAG context.
 
-**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are **deterministic** and CPIC/PharmVar-aligned via `src/allele_caller.py` (`interpret_cyp2c19(patient_variants)` for simple rsid→alt; VCF pipeline uses same data). Otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)`. PGx data is versioned in repo; see `data/pgx/sources.md`.
+**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12), VKORC1 (chr16). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are **deterministic** and CPIC/PharmVar-aligned via `src/allele_caller.py` (`interpret_cyp2c19(patient_variants)` for simple rsid→alt; VCF pipeline uses same data). **Warfarin** is integrated end-to-end: CYP2C9 (chr10) + VKORC1 (chr16) variants are merged in the profile builder, and `interpret_warfarin_from_vcf()` adds a deterministic line to the patient genetics string (e.g. `Warfarin PGx: CYP2C9 *1/*2 + VKORC1 GA → Moderate dose reduction recommended`). The agent and Streamlit UI receive this in the genetics summary; the Patient Genetics tab shows a dedicated Warfarin PGx subsection when present. Data: CYP2C9 PharmVar TSV + VKORC1 rs9923231 + `data/pgx/cpic/warfarin_response.json`; caller in `src/warfarin_caller.py`; benchmark: `python main.py --benchmark warfarin_examples.json`. Otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)` and `VKORC1 GG`. PGx data is versioned in repo; see `data/pgx/sources.md`. *Current allele calling supports single-variant defining alleles (*2, *3, *17). Multi-variant haplotypes are future work.*
 
 **RAG transparency:** API response and UI show `similar_drugs_used`, `genetics_summary`, `context_sources` so predictions are auditable. For a step-by-step pipeline and how results are verified, see [How it works](#how-it-works-pipeline-and-verification) below.
 

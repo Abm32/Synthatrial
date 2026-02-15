@@ -23,6 +23,27 @@ Record source, download date, and version when you add or refresh files. Update 
 - **Content:** Diplotype → phenotype label (e.g. *1/*2 → Intermediate Metabolizer).
 - **Version:** CPIC guideline–aligned (update to e.g. “CPIC 2023 update” when refreshed from https://cpicpgx.org/guidelines/ )
 
+### CYP2C9 Alleles (Warfarin)
+
+- **Source:** PharmVar CYP2C9 allele definitions (curated downloads)
+- **File:** `pharmvar/cyp2c9_alleles.tsv`
+- **Content:** Minimal clinically relevant set (*2, *3); *1 is default.
+- **Downloaded:** 2026-02-15 (initial)
+
+### VKORC1 Variants (Warfarin)
+
+- **Source:** CPIC/PharmVar warfarin guideline (rs9923231 -1639G>A)
+- **File:** `pharmvar/vkorc1_variants.tsv`
+- **Content:** rs9923231 risk allele A → increased sensitivity (lower dose).
+- **Downloaded:** 2026-02-15 (initial)
+
+### Warfarin Response (CYP2C9 + VKORC1)
+
+- **Source:** CPIC-style warfarin dose sensitivity (genotype → recommendation)
+- **File:** `cpic/warfarin_response.json`
+- **Content:** CYP2C9 diplotype + VKORC1 genotype (GG/GA/AA) → dose recommendation.
+- **Version:** Simplified MVP; consult CPIC warfarin guideline for full tables.
+
 ---
 
 ## Why no single “PGx API”?
@@ -80,5 +101,8 @@ When you update `pharmvar/` or `cpic/` files, update the provenance section abov
 |---------------|------------------|--------------|
 | cyp2c19_alleles.tsv | PharmVar CYP2C19 (minimal set) | 2026-02-15 |
 | cyp2c19_phenotypes.json | CPIC CYP2C19 guideline (phenotype translation) | 2026-02-15 |
+| cyp2c9_alleles.tsv | PharmVar CYP2C9 (minimal set *2, *3) | 2026-02-15 |
+| vkorc1_variants.tsv | CPIC/PharmVar rs9923231 | 2026-02-15 |
+| warfarin_response.json | CPIC-style Warfarin dose table | 2026-02-15 |
 
 Run `python scripts/update_pgx_data.py --validate` to check existing files. Use `scripts/update_pgx_data.py` (and its `--help`) to refresh from upstream when needed; then update provenance, this table, and commit.

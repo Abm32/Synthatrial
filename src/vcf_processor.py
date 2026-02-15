@@ -11,7 +11,7 @@ import os
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
-from .allele_caller import call_gene_from_variants
+from .allele_caller import _genotype_to_alleles, call_gene_from_variants
 from .exceptions import VCFProcessingError
 from .variant_db import (
     VARIANT_DB,
@@ -19,6 +19,7 @@ from .variant_db import (
     get_phenotype_prediction,
     get_variant_info,
 )
+from .warfarin_caller import interpret_warfarin_from_vcf
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -42,11 +43,15 @@ CYP_GENE_LOCATIONS = {
     "UGT1A1": {"chrom": "2", "start": 234668875, "end": 234689625},
     # Transporters
     "SLCO1B1": {"chrom": "12", "start": 21288593, "end": 21397223},
+    "VKORC1": {"chrom": "16", "start": 31102163, "end": 31107800},
 }
 
-# Genes included in patient profile (must have VARIANT_DB entry and CYP_GENE_LOCATIONS).
-# Order: Big 3 CYPs first, then Phase II / transporters.
-PROFILE_GENES = ["CYP2D6", "CYP2C19", "CYP2C9", "UGT1A1", "SLCO1B1"]
+# Genes included in patient profile (must have CYP_GENE_LOCATIONS; VARIANT_DB used as fallback where applicable).
+# Order: Big 3 CYPs first, then Phase II / transporters, then Warfarin (VKORC1).
+PROFILE_GENES = ["CYP2D6", "CYP2C19", "CYP2C9", "UGT1A1", "SLCO1B1", "VKORC1"]
+
+# Warfarin PGx: rsIDs used for deterministic CYP2C9 + VKORC1 interpretation.
+WARFARIN_RSIDS = {"rs1799853", "rs1057910", "rs9923231"}
 
 # Star Allele to Activity Score Mapping
 # Based on CPIC/PharmVar guidelines
@@ -559,9 +564,18 @@ def generate_patient_profile_from_vcf(
             default = "average_function"
         if not gene_variants[gene]:
             return default, None, []
+        var_map = _variants_to_genotype_map(gene_variants[gene], sample_id)
+        # VKORC1: genotype at rs9923231 (GG/GA/AA), not star alleles
+        if gene == "VKORC1" and var_map:
+            ref, alt, gt = var_map.get("rs9923231", (None, None, None))
+            if ref is not None and alt is not None and gt is not None:
+                two = _genotype_to_alleles(ref, alt, gt)
+                a1, a2 = sorted(two)
+                geno = "GA" if (a1, a2) == ("A", "G") else f"{a1}{a2}"
+                return f"vkorc1_{geno.lower()}", geno, [f"VKORC1 rs9923231 {geno}"]
+            return default, None, []
         # Try CPIC/PharmVar path first for genes with data/pgx files (e.g. CYP2C19)
         try:
-            var_map = _variants_to_genotype_map(gene_variants[gene], sample_id)
             if var_map:
                 cpic_result = call_gene_from_variants(gene, var_map)
                 if cpic_result:
@@ -586,6 +600,9 @@ def generate_patient_profile_from_vcf(
     for gene in PROFILE_GENES:
         status, allele_call, interpretation = _status_and_alleles(gene)
         s = status
+        if gene == "VKORC1" and allele_call:
+            genetics_parts.append(f"VKORC1 {allele_call}")
+            continue
         if s == "extensive_metabolizer" and gene != "SLCO1B1":
             continue
         if gene == "SLCO1B1" and s == "average_function":
@@ -598,6 +615,23 @@ def generate_patient_profile_from_vcf(
             genetics_parts.append(f"{gene} {allele_call} ({term})")
         else:
             genetics_parts.append(f"{gene} {term}")
+
+    # Warfarin PGx: merge CYP2C9 (chr10) + VKORC1 (chr16) variants and add deterministic interpretation
+    warfarin_var_map: Dict[str, Tuple[str, str, str]] = {}
+    for g in ("CYP2C9", "VKORC1"):
+        if gene_variants.get(g):
+            warfarin_var_map.update(
+                _variants_to_genotype_map(gene_variants[g], sample_id)
+            )
+    if warfarin_var_map and any(rsid in warfarin_var_map for rsid in WARFARIN_RSIDS):
+        try:
+            warfarin_result = interpret_warfarin_from_vcf(warfarin_var_map)
+            if warfarin_result:
+                genetics_parts.append(
+                    f"Warfarin PGx: CYP2C9 {warfarin_result['CYP2C9']} + VKORC1 {warfarin_result['VKORC1']} → {warfarin_result['recommendation']}"
+                )
+        except Exception as e:
+            logger.debug(f"Warfarin interpretation skipped: {e}")
 
     if not genetics_parts:
         genetics_text = "CYP2D6 Extensive Metabolizer (Normal)"

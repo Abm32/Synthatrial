@@ -1,0 +1,14 @@
+{
+  "_comment": "CPIC-style Warfarin dose sensitivity (CYP2C9 + VKORC1). Simplified MVP; consult CPIC guideline for full tables.",
+  "CYP2C9 *1/*1 + VKORC1 GG": "Normal dose requirement",
+  "CYP2C9 *1/*1 + VKORC1 GA": "Moderate dose reduction recommended",
+  "CYP2C9 *1/*1 + VKORC1 AA": "High sensitivity — lower dose",
+  "CYP2C9 *1/*2 + VKORC1 GG": "Moderate dose reduction recommended",
+  "CYP2C9 *1/*2 + VKORC1 GA": "Moderate dose reduction recommended",
+  "CYP2C9 *1/*2 + VKORC1 AA": "High sensitivity — major dose reduction",
+  "CYP2C9 *2/*2 + VKORC1 AA": "High sensitivity — major dose reduction",
+  "CYP2C9 *2/*3 + VKORC1 GG": "Moderate dose reduction recommended",
+  "CYP2C9 *1/*3 + VKORC1 GA": "High bleeding risk — lower starting dose",
+  "CYP2C9 *1/*3 + VKORC1 AA": "Extreme sensitivity — avoid standard dosing",
+  "CYP2C9 *3/*3 + VKORC1 AA": "Extreme sensitivity — avoid standard dosing"
+}
