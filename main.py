@@ -12,6 +12,7 @@ import json
 import os
 
 from src.agent_engine import run_simulation
+from src.allele_caller import call_gene_from_variants
 from src.config import config
 from src.exceptions import ConfigurationError
 from src.input_processor import get_drug_fingerprint
@@ -28,11 +29,24 @@ from src.vector_search import find_similar_drugs
 setup_logging()
 
 
+def _variants_from_row(row: dict) -> dict:
+    """Build variant map for allele_caller from JSON. Expects 'variants': {rsid: {ref, alt, gt}} or {rsid: [ref, alt, gt]}."""
+    raw = row.get("variants") or {}
+    out = {}
+    for rsid, v in raw.items():
+        if isinstance(v, (list, tuple)) and len(v) >= 3:
+            out[rsid] = (str(v[0]), str(v[1]), str(v[2]))
+        elif isinstance(v, dict) and "ref" in v and "alt" in v and "gt" in v:
+            out[rsid] = (str(v["ref"]), str(v["alt"]), str(v["gt"]))
+    return out
+
+
 def run_benchmark(json_path: str) -> None:
     """
     Run evaluation mode: load CPIC-style examples from JSON, report predicted vs expected
-    phenotype and match %. JSON format: list of {"gene", "alleles", "expected_phenotype"}
-    with optional "drug_name" and "description".
+    phenotype and match %. Supports:
+    - allele-based: {"gene", "alleles", "expected_phenotype"} (uses get_phenotype_prediction)
+    - variant-based: {"gene", "variants", "expected_phenotype"} (uses PharmVar/CPIC data when present)
     """
     if not os.path.isfile(json_path):
         print(f"Error: Benchmark file not found: {json_path}")
@@ -44,36 +58,55 @@ def run_benchmark(json_path: str) -> None:
     results = []
     for i, row in enumerate(examples):
         gene = row.get("gene", "CYP2D6")
-        alleles = row.get("alleles", [])
-        expected = (row.get("expected_phenotype") or "").strip().lower().replace(" ", "_")
-        copy_number = row.get("copy_number", 2)
-        predicted = get_phenotype_prediction(gene, alleles, copy_number)
+        expected = (
+            (row.get("expected_phenotype") or "").strip().lower().replace(" ", "_")
+        )
+        variant_map = _variants_from_row(row)
+        if variant_map:
+            cpic_result = call_gene_from_variants(gene, variant_map)
+            if cpic_result:
+                predicted = cpic_result["phenotype_normalized"]
+                alleles = cpic_result.get("alleles_detected", [])
+            else:
+                predicted = "unknown"
+                alleles = []
+        else:
+            alleles = row.get("alleles", [])
+            copy_number = row.get("copy_number", 2)
+            predicted = get_phenotype_prediction(gene, alleles, copy_number)
         match = predicted == expected
-        results.append({
-            "gene": gene,
-            "alleles": alleles,
-            "expected": expected,
-            "predicted": predicted,
-            "match": match,
-            "drug_name": row.get("drug_name", ""),
-            "description": row.get("description", ""),
-        })
-    # Report
+        results.append(
+            {
+                "gene": gene,
+                "alleles": alleles,
+                "expected": expected,
+                "predicted": predicted,
+                "match": match,
+                "drug_name": row.get("drug_name", ""),
+                "description": row.get("description", ""),
+            }
+        )
     matches = sum(1 for r in results if r["match"])
     pct = (100.0 * matches / len(results)) if results else 0
     print("\n=== SynthaTrial CPIC Benchmark ===\n")
-    print(f"{'Gene':<10} {'Alleles':<20} {'Expected':<25} {'Predicted':<25} {'Match':<6}")
+    print(
+        f"{'Gene':<10} {'Alleles':<20} {'Expected':<25} {'Predicted':<25} {'Match':<6}"
+    )
     print("-" * 90)
     for r in results:
         alleles_str = ",".join(r["alleles"]) if r["alleles"] else "*1/*1"
-        print(f"{r['gene']:<10} {alleles_str:<20} {r['expected']:<25} {r['predicted']:<25} {'Yes' if r['match'] else 'No':<6}")
+        print(
+            f"{r['gene']:<10} {alleles_str:<20} {r['expected']:<25} {r['predicted']:<25} {'Yes' if r['match'] else 'No':<6}"
+        )
     print("-" * 90)
     print(f"Match: {matches}/{len(results)} ({pct:.1f}%)\n")
     if any(not r["match"] for r in results):
         print("Mismatches:")
         for r in results:
             if not r["match"]:
-                print(f"  {r['gene']} {r['alleles']}: expected {r['expected']}, got {r['predicted']}")
+                print(
+                    f"  {r['gene']} {r['alleles']}: expected {r['expected']}, got {r['predicted']}"
+                )
 
 
 def main():
@@ -133,7 +166,9 @@ Examples:
         return
 
     # Resolve VCF paths: CLI args > env (config) > discovered files in data/genomes
-    genomes_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "genomes")
+    genomes_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data", "genomes"
+    )
     discovered = discover_vcf_paths(genomes_dir)
     vcf_chr22 = args.vcf or config.VCF_CHR22_PATH or discovered.get("chr22")
     vcf_chr10 = args.vcf_chr10 or config.VCF_CHR10_PATH or discovered.get("chr10")
@@ -155,7 +190,9 @@ Examples:
         # List all discovered chromosomes (from data/genomes)
         if discovered:
             chroms_sorted = sorted(discovered.keys(), key=lambda c: (len(c), c))
-            print(f"  Discovered chromosomes ({len(discovered)}): {', '.join(chroms_sorted)}")
+            print(
+                f"  Discovered chromosomes ({len(discovered)}): {', '.join(chroms_sorted)}"
+            )
         print(f"  Chromosome 22 (CYP2D6): {vcf_chr22}")
         if vcf_chr10:
             print(f"  Chromosome 10 (CYP2C9/CYP2C19): {vcf_chr10}")
@@ -166,7 +203,9 @@ Examples:
         if vcf_chr10:
             print("  ✓ Big 3 enzymes + UGT1A1/SLCO1B1 when chr2/chr12 present")
         elif not (vcf_paths_by_chrom.get("chr2") or vcf_paths_by_chrom.get("chr12")):
-            print("  ⚠ Only CYP2D6 enabled (add chr10/chr2/chr12 VCFs for full profile)")
+            print(
+                "  ⚠ Only CYP2D6 enabled (add chr10/chr2/chr12 VCFs for full profile)"
+            )
 
         try:
             if args.sample_id:

@@ -11,6 +11,7 @@ import os
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
+from .allele_caller import call_gene_from_variants
 from .exceptions import VCFProcessingError
 from .variant_db import (
     VARIANT_DB,
@@ -451,6 +452,34 @@ def infer_metabolizer_status_with_alleles(
     return result
 
 
+def _variants_to_genotype_map(
+    variants: List[Dict], sample_id: str
+) -> Dict[str, Tuple[str, str, str]]:
+    """Build rsid -> (ref, alt, gt) from VCF variant list for one sample."""
+    out: Dict[str, Tuple[str, str, str]] = {}
+    for v in variants:
+        rsid = v.get("id") or v.get("rsid", "")
+        if (
+            not rsid
+            or rsid.startswith("CYP")
+            or "DEL" in str(rsid)
+            or "DUP" in str(rsid)
+        ):
+            continue
+        ref = str(v.get("ref", ""))
+        alt = str(v.get("alt", ""))
+        if not ref:
+            continue
+        if "," in alt:
+            alt = alt.split(",")[0]
+        samples = v.get("samples", {})
+        gt = samples.get(sample_id, "0/0")
+        if not gt or gt in (".", "./.", ".|."):
+            continue
+        out[rsid] = (ref, alt, gt)
+    return out
+
+
 def _chrom_key_for_gene(gene: str) -> Optional[str]:
     """Return VCF chromosome key for a gene (e.g. CYP2D6 -> chr22)."""
     loc = CYP_GENE_LOCATIONS.get(gene)
@@ -513,9 +542,7 @@ def generate_patient_profile_from_vcf(
         if not vcf_file:
             continue
         try:
-            gene_variants[gene] = extract_cyp_variants(
-                vcf_file, gene, sample_limit=1
-            )
+            gene_variants[gene] = extract_cyp_variants(vcf_file, gene, sample_limit=1)
             if gene_variants[gene]:
                 logger.info(
                     f"Extracted {len(gene_variants[gene])} {gene} variants from {chr_key}"
@@ -524,13 +551,36 @@ def generate_patient_profile_from_vcf(
             logger.warning(f"Could not extract {gene} variants from {chr_key}: {e}")
 
     # Infer status and allele-level interpretation per gene (for transparency)
-    def _status_and_alleles(gene: str, default: str = "extensive_metabolizer") -> Tuple[str, Optional[str], List[str]]:
+    # CYP2C19: use curated PharmVar/CPIC data when present (deterministic, guideline-derived)
+    def _status_and_alleles(
+        gene: str, default: str = "extensive_metabolizer"
+    ) -> Tuple[str, Optional[str], List[str]]:
         if gene == "SLCO1B1":
             default = "average_function"
         if not gene_variants[gene]:
             return default, None, []
-        info = infer_metabolizer_status_with_alleles(gene_variants[gene], sample_id, gene=gene)
-        return info["phenotype"], info.get("allele_call"), info.get("interpretation", [])
+        # Try CPIC/PharmVar path first for genes with data/pgx files (e.g. CYP2C19)
+        try:
+            var_map = _variants_to_genotype_map(gene_variants[gene], sample_id)
+            if var_map:
+                cpic_result = call_gene_from_variants(gene, var_map)
+                if cpic_result:
+                    phen = cpic_result["phenotype_normalized"]
+                    diplo = cpic_result["diplotype"]
+                    interp = [
+                        f"{gene} {diplo} → {cpic_result['phenotype_display']} (CPIC)"
+                    ]
+                    return phen, diplo, interp
+        except Exception as e:
+            logger.debug(f"CPIC/PharmVar path skipped for {gene}: {e}")
+        info = infer_metabolizer_status_with_alleles(
+            gene_variants[gene], sample_id, gene=gene
+        )
+        return (
+            info["phenotype"],
+            info.get("allele_call"),
+            info.get("interpretation", []),
+        )
 
     genetics_parts = []
     for gene in PROFILE_GENES:
@@ -630,6 +680,7 @@ SUPPORTED_CHROMOSOMES_ORDER: Tuple[str, ...] = tuple(
         key=lambda x: -len(x),
     )
 )
+
 
 def discover_vcf_paths(genomes_dir: str = "data/genomes") -> Dict[str, str]:
     """

@@ -6,6 +6,8 @@ Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, P
 
 > **⚠️ Not for clinical use**
 > SynthaTrial is a **research prototype**. Outputs are synthetic and must **not** be used for clinical decision-making, diagnosis, or treatment. Not medical advice.
+>
+> **Limitations:** Incomplete allele coverage; no copy-number/structural variants (CNVs) for CYP2D6 yet; phenotype and drug guidance are guideline-derived (CPIC/PharmVar) where data files exist but are not a substitute for clinical testing.
 
 ---
 
@@ -40,7 +42,7 @@ VCF and ChEMBL are **not** in the repo (gitignored). The app runs without them (
 
 If you have chr6, chr11, or chr19 in `data/genomes/`, they are discovered but **not used**—no genes are mapped to them. Only chr2, chr10, chr12, chr22 drive the patient genetics pipeline.
 
-**EBI 1000 Genomes (v5b):**  
+**EBI 1000 Genomes (v5b):**
 Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`
 
 - chr2: `ALL.chr2.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`
@@ -109,7 +111,7 @@ User Input (Drug SMILES + Patient Profile)
 Output: risk level, interpretation, + RAG context (similar drugs, genetics, sources)
 ```
 
-**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). Allele calling (*1, *2, *4…) and interpretation in `src/variant_db.py` (`ALLELE_FUNCTION_MAP`). Profiles can show e.g. `CYP2D6 *1/*4 (Poor Metabolizer)`.
+**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). For **CYP2C19**, when curated data exists (`data/pgx/pharmvar/cyp2c19_alleles.tsv`, `data/pgx/cpic/cyp2c19_phenotypes.json`), allele calling and phenotype are deterministic and CPIC/PharmVar-aligned via `src/allele_caller.py`; otherwise fallback to `src/variant_db.py`. Profiles show e.g. `CYP2C19 *1/*2 → Intermediate Metabolizer (CPIC)`.
 
 **RAG transparency:** API response and UI show `similar_drugs_used`, `genetics_summary`, `context_sources` so predictions are auditable.
 
@@ -129,6 +131,7 @@ SynthaTrial/
 │   ├── input_processor.py   # SMILES → fingerprint
 │   ├── vector_search.py     # Pinecone / mock
 │   ├── agent_engine.py      # LLM simulation
+│   ├── allele_caller.py     # Deterministic CPIC/PharmVar calling (CYP2C19 first)
 │   ├── vcf_processor.py     # VCF parsing, allele call, profile
 │   ├── variant_db.py        # Allele map, phenotype prediction
 │   └── chembl_processor.py # ChEMBL integration
@@ -141,6 +144,7 @@ SynthaTrial/
 │   ├── validation_tests.py
 │   └── quick_test.py
 └── data/
+    ├── pgx/       # Curated PharmVar (TSV) + CPIC (JSON); used when present
     ├── genomes/   # VCFs (optional)
     └── chembl/    # ChEMBL SQLite (optional)
 ```
