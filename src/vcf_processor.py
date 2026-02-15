@@ -20,6 +20,7 @@ from .variant_db import (
     get_variant_info,
 )
 from .warfarin_caller import interpret_warfarin_from_vcf
+from .slco1b1_caller import interpret_slco1b1_from_vcf
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -52,6 +53,10 @@ PROFILE_GENES = ["CYP2D6", "CYP2C19", "CYP2C9", "UGT1A1", "SLCO1B1", "VKORC1"]
 
 # Warfarin PGx: rsIDs used for deterministic CYP2C9 + VKORC1 interpretation.
 WARFARIN_RSIDS = {"rs1799853", "rs1057910", "rs9923231"}
+# SLCO1B1 (statin myopathy): CPIC marker rs4149056.
+SLCO1B1_RSIDS = {"rs4149056"}
+# Drugs that trigger SLCO1B1 statin PGx recommendation (CPIC-style).
+STATIN_DRUGS = {"simvastatin", "atorvastatin", "rosuvastatin", "pravastatin", "lovastatin", "fluvastatin", "pitavastatin"}
 
 # Star Allele to Activity Score Mapping
 # Based on CPIC/PharmVar guidelines
@@ -507,11 +512,13 @@ def generate_patient_profile_from_vcf(
     lifestyle: Optional[Dict[str, str]] = None,
     vcf_path_chr10: Optional[str] = None,
     vcf_paths_by_chrom: Optional[Dict[str, str]] = None,
+    drug_name: Optional[str] = None,
 ) -> str:
     """
     Generate a synthetic patient profile from VCF data.
     Uses chr22 (CYP2D6), chr10 (CYP2C19, CYP2C9), chr2 (UGT1A1), chr12 (SLCO1B1)
     when the corresponding VCF files are provided via vcf_paths_by_chrom or legacy args.
+    When drug_name is a statin, appends deterministic Statin PGx (SLCO1B1) line (CPIC-style).
 
     Args:
         vcf_path: Path to primary VCF (chr22 for CYP2D6); used if vcf_paths_by_chrom not set.
@@ -520,8 +527,8 @@ def generate_patient_profile_from_vcf(
         conditions: List of medical conditions
         lifestyle: Dictionary with 'alcohol' and 'smoking' keys
         vcf_path_chr10: Optional path to chr10 (CYP2C9/CYP2C19); used if vcf_paths_by_chrom not set.
-        vcf_paths_by_chrom: Optional dict chromosome -> path (e.g. {"chr22": path, "chr10": path,
-            "chr2": path, "chr12": path}). When set, overrides vcf_path/vcf_path_chr10 for lookups.
+        vcf_paths_by_chrom: Optional dict chromosome -> path.
+        drug_name: Optional drug name; if a statin, Statin PGx (SLCO1B1) line is appended.
     Returns:
         Formatted patient profile string
     """
@@ -584,6 +591,28 @@ def generate_patient_profile_from_vcf(
                     [f"VKORC1 rs9923231 genotype={gt} → {geno}"],
                 )
             return default, None, []
+        # SLCO1B1: deterministic rs4149056 (c.521T>C) → TT/TC/CC, phenotype
+        if gene == "SLCO1B1" and var_map and "rs4149056" in var_map:
+            try:
+                slco_result = interpret_slco1b1_from_vcf(var_map)
+                if slco_result:
+                    phen_raw = slco_result["phenotype"]
+                    if "Normal" in phen_raw or "low" in phen_raw.lower():
+                        phen_norm = "average_function"
+                    elif "Decreased" in phen_raw or "moderate" in phen_raw.lower():
+                        phen_norm = "decreased_function"
+                    elif "Poor" in phen_raw or "high" in phen_raw.lower():
+                        phen_norm = "poor_function"
+                    else:
+                        phen_norm = "average_function"
+                    return (
+                        phen_norm,
+                        slco_result["genotype"],
+                        [f"SLCO1B1 rs4149056 {slco_result['genotype']} → {phen_raw}"],
+                    )
+            except Exception as e:
+                logger.debug(f"SLCO1B1 interpretation skipped: {e}")
+            return default, None, []
         # Try CPIC/PharmVar path first for genes with data/pgx files (e.g. CYP2C19)
         try:
             if var_map:
@@ -642,6 +671,23 @@ def generate_patient_profile_from_vcf(
                 )
         except Exception as e:
             logger.debug(f"Warfarin interpretation skipped: {e}")
+
+    # SLCO1B1 Statin PGx: only when drug is a statin (CPIC-style drug-gated recommendation)
+    if drug_name and drug_name.strip().lower() in STATIN_DRUGS:
+        slco_var_map: Dict[str, Tuple[str, str, str]] = {}
+        if gene_variants.get("SLCO1B1"):
+            slco_var_map.update(
+                _variants_to_genotype_map(gene_variants["SLCO1B1"], sample_id)
+            )
+        if slco_var_map and "rs4149056" in slco_var_map:
+            try:
+                slco_result = interpret_slco1b1_from_vcf(slco_var_map)
+                if slco_result:
+                    genetics_parts.append(
+                        f"Statin PGx: SLCO1B1 {slco_result['genotype']} → {slco_result['phenotype']}"
+                    )
+            except Exception as e:
+                logger.debug(f"SLCO1B1 interpretation skipped: {e}")
 
     if not genetics_parts:
         genetics_text = "CYP2D6 Extensive Metabolizer (Normal)"
