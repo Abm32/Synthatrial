@@ -59,6 +59,23 @@ def load_pharmvar_table(path: str | Path) -> "pd.DataFrame":
     return df
 
 
+def alt_dosage(gt: str) -> Optional[int]:
+    """
+    Convert VCF genotype string into ALT allele dosage (diploid).
+    0/0 or 0|0 → 0,  0/1 or 1|0 → 1,  1/1 or 1|1 → 2.
+    """
+    if not gt:
+        return None
+    g = gt.replace("|", "/").strip()
+    if g in ("0/0", "0|0"):
+        return 0
+    if g in ("0/1", "1/0", "0|1", "1|0"):
+        return 1
+    if g in ("1/1", "1|1"):
+        return 2
+    return None
+
+
 def _genotype_to_alleles(ref: str, alt: str, gt: str) -> List[str]:
     """Convert VCF REF, ALT, GT to list of two allele bases (one per chromosome)."""
     alleles: List[str] = []

@@ -11,7 +11,7 @@ import os
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
-from .allele_caller import _genotype_to_alleles, call_gene_from_variants
+from .allele_caller import alt_dosage, _genotype_to_alleles, call_gene_from_variants
 from .exceptions import VCFProcessingError
 from .variant_db import (
     VARIANT_DB,
@@ -565,14 +565,24 @@ def generate_patient_profile_from_vcf(
         if not gene_variants[gene]:
             return default, None, []
         var_map = _variants_to_genotype_map(gene_variants[gene], sample_id)
-        # VKORC1: genotype at rs9923231 (GG/GA/AA), not star alleles
+        # VKORC1: genotype at rs9923231 (GG/GA/AA), diploid-correct from GT
         if gene == "VKORC1" and var_map:
             ref, alt, gt = var_map.get("rs9923231", (None, None, None))
-            if ref is not None and alt is not None and gt is not None:
-                two = _genotype_to_alleles(ref, alt, gt)
-                a1, a2 = sorted(two)
-                geno = "GA" if (a1, a2) == ("A", "G") else f"{a1}{a2}"
-                return f"vkorc1_{geno.lower()}", geno, [f"VKORC1 rs9923231 {geno}"]
+            if ref and alt and gt:
+                dosage = alt_dosage(gt)
+                if dosage == 0:
+                    geno = f"{ref}{ref}"
+                elif dosage == 1:
+                    geno = f"{ref}{alt}"
+                elif dosage == 2:
+                    geno = f"{alt}{alt}"
+                else:
+                    geno = "Unknown"
+                return (
+                    f"vkorc1_{geno.lower()}",
+                    geno,
+                    [f"VKORC1 rs9923231 genotype={gt} → {geno}"],
+                )
             return default, None, []
         # Try CPIC/PharmVar path first for genes with data/pgx files (e.g. CYP2C19)
         try:

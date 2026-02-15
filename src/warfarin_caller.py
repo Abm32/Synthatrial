@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from .allele_caller import (
-    _genotype_to_alleles,
+    alt_dosage,
     build_diplotype,
     build_diplotype_simple,
     call_star_alleles,
@@ -108,15 +108,25 @@ def interpret_warfarin(
     }
 
 
+def call_vkorc1_from_gt(ref: str, alt: str, gt: str) -> str:
+    """VKORC1 genotype GG/GA/AA from VCF ref, alt, and GT (diploid-correct)."""
+    dosage = alt_dosage(gt)
+    if dosage == 0:
+        return f"{ref}{ref}"
+    if dosage == 1:
+        return f"{ref}{alt}"
+    if dosage == 2:
+        return f"{alt}{alt}"
+    return "Unknown"
+
+
 def _vkorc1_genotype_from_vcf(var_map: Dict[str, Tuple[str, str, str]]) -> str:
     """Get VKORC1 genotype GG/GA/AA from VCF-style rsid -> (ref, alt, gt)."""
     t = var_map.get("rs9923231")
     if not t:
         return "Unknown"
     ref, alt, gt = t
-    two = _genotype_to_alleles(ref, alt, gt)
-    a1, a2 = sorted(two)
-    return "GA" if (a1, a2) == ("A", "G") else f"{a1}{a2}"
+    return call_vkorc1_from_gt(ref, alt, gt)
 
 
 def interpret_warfarin_from_vcf(
