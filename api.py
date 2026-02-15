@@ -67,6 +67,16 @@ class AnalyzeResponse(BaseModel):
     )
     drug_name: str = Field(..., description="Name of the analyzed drug")
     status: str = Field(default="success", description="Request status")
+    # RAG context (transparent reasoning)
+    similar_drugs_used: Optional[List[str]] = Field(
+        None, description="Retrieved similar drugs used for prediction"
+    )
+    genetics_summary: Optional[str] = Field(
+        None, description="Genetic variants / metabolizer status used (e.g. CYP2D6 poor metabolizer)"
+    )
+    context_sources: Optional[str] = Field(
+        None, description="Source of similar drugs (e.g. ChEMBL via Pinecone, Mock data)"
+    )
 
 
 class HealthResponse(BaseModel):
@@ -220,17 +230,28 @@ async def analyze_drug(request: AnalyzeRequest):
 
         # Get similar drugs if not provided
         similar_drugs = request.similar_drugs
+        used_pinecone = False
         if not similar_drugs:
             logger.info("Computing similar drugs via vector search")
             try:
-                # Use provided SMILES or default
                 drug_smiles = request.drug_smiles or "CC(=O)Nc1ccc(O)cc1"
                 vector = get_drug_fingerprint(drug_smiles)
                 similar_drugs = find_similar_drugs(vector)
+                used_pinecone = bool(config.PINECONE_API_KEY)
                 logger.info(f"Found {len(similar_drugs)} similar drugs")
             except Exception as e:
                 logger.warning(f"Vector search failed: {e}, using empty list")
                 similar_drugs = []
+        else:
+            used_pinecone = bool(config.PINECONE_API_KEY)
+
+        # Extract genetics summary from patient profile
+        genetics_summary = None
+        for line in (request.patient_profile or "").splitlines():
+            line = line.strip()
+            if line.lower().startswith("genetics:"):
+                genetics_summary = line.replace("Genetics:", "").strip()
+                break
 
         # Run AI simulation
         logger.info("Running pharmacogenomics simulation")
@@ -241,8 +262,9 @@ async def analyze_drug(request: AnalyzeRequest):
             drug_smiles=request.drug_smiles,
         )
 
-        # Extract risk level from result
         risk_level = extract_risk_level(result)
+        context_sources = "ChEMBL (via Pinecone)" if used_pinecone else "Mock data (no Pinecone key)"
+        similar_names = [s.split("|")[0].strip() if "|" in s else s for s in similar_drugs]
 
         logger.info(f"Simulation completed successfully. Risk level: {risk_level}")
 
@@ -251,6 +273,9 @@ async def analyze_drug(request: AnalyzeRequest):
             risk_level=risk_level,
             drug_name=request.drug_name,
             status="success",
+            similar_drugs_used=similar_names or similar_drugs,
+            genetics_summary=genetics_summary,
+            context_sources=context_sources,
         )
 
     except ConfigurationError as e:
