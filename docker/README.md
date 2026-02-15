@@ -127,7 +127,7 @@ Common issues and solutions:
 3. **Browser warnings**: Expected for self-signed certificates
 4. **Configuration errors**: Validate with `nginx -t`
 
-For detailed troubleshooting, see `docs/ssl_setup.md`.
+For detailed troubleshooting, see the root README.
 
 ### Production Deployment Notes
 

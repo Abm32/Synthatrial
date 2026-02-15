@@ -293,7 +293,7 @@ For workflow issues:
 4. Create issue with workflow run details
 
 For SynthaTrial-specific issues:
-1. Review `docs/troubleshooting.md`
+1. Review root README (Troubleshooting section)
 2. Check container logs: `make logs`
 3. Run local validation: `make test`
 4. Consult implementation documentation

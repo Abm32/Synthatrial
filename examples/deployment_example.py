@@ -232,7 +232,7 @@ def main():
     print("📚 Additional Resources:")
     print("  - Makefile targets: make deploy-staging, make deploy-production")
     print("  - GitHub Actions: .github/workflows/docker-build.yml")
-    print("  - Documentation: docs/deployment.md")
+    print("  - Documentation: root README")
     print("  - Tests: tests/test_deploy_to_registry_*.py")
 
 

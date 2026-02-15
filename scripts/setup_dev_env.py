@@ -381,7 +381,7 @@ filterwarnings =
                 "Run 'pre-commit run --all-files' to check all files",
                 "Run 'pytest' to execute the test suite",
                 "Run 'make quick-start' to start development environment",
-                "Check 'docs/setup.md' for additional setup instructions",
+                "Check root README for additional setup instructions",
             ]
         else:
             report["next_steps"] = [

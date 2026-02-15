@@ -1,267 +1,167 @@
-# SynthaTrial - In Silico Pharmacogenomics Platform
+# SynthaTrial — In Silico Pharmacogenomics Platform
 
-**Version: 0.2 (Beta)**
+**Version 0.2 (Beta)**
 
-An MVP platform that simulates drug effects on synthetic patient cohorts using Agentic AI. The system processes VCF files to extract genetic variants, uses ChEMBL database for drug information, and employs RAG (Retrieval-Augmented Generation) with LLMs to predict drug response based on patient genetics.
+Simulates drug–gene interactions using Agentic AI: VCF-based allele calling, PharmVar/CPIC-style interpretation, RAG with similar drugs, and LLM-generated risk and mechanism.
 
-> **⚠️ Safety disclaimer — not for clinical use**  
-> **SynthaTrial is a research prototype.** It is a simulation and explanation engine, not a true pharmacogenomics predictor. All outputs are synthetic predictions and **must not be used for clinical decision-making**, diagnosis, or treatment. This software is not medical advice and must not be used as such.
-
----
-
-## 🚀 Quick Start
-
-### 1. Environment Setup
-
-```bash
-# Create conda environment
-conda create -n synthatrial python=3.10
-conda activate synthatrial
-
-# Install dependencies
-conda install -c conda-forge rdkit pandas scipy scikit-learn
-pip install langchain langchain-google-genai pinecone-client python-dotenv streamlit
-```
-
-### 2. Configure API Keys
-
-Create a `.env` file:
-```bash
-GOOGLE_API_KEY=your_gemini_api_key
-PINECONE_API_KEY=your_pinecone_api_key  # Optional (mock mode if missing)
-PINECONE_INDEX=drug-index
-```
-
-### 3. Set Up Data
-
-**VCF File (Optional):**
-```bash
-mkdir -p data/genomes
-# Use v5b (v5a returns 404). See docs/VCF_CHROMOSOME_SET.md for chr10 and representative set.
-curl -L https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz \
-  -o data/genomes/chr22.vcf.gz
-```
-Any `.vcf.gz` in `data/genomes` whose filename contains the chromosome (e.g. `chr22`, `chr10`) is **auto-discovered**—you can use short names like `chr22.vcf.gz` or long names like `ALL.chr22.phase3_shapeit2_...vcf.gz`. Run `python main.py --sample-id HG00096` and the app will use discovered VCFs if you don’t pass `--vcf`.
-
-**ChEMBL Database (Optional):**
-```bash
-mkdir -p data/chembl
-curl -L https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_34/chembl_34_sqlite.tar.gz \
-  -o data/chembl/chembl_34_sqlite.tar.gz
-tar -xvzf data/chembl/chembl_34_sqlite.tar.gz -C data/chembl/
-```
-
-**Pinecone Index:**
-```bash
-python scripts/setup_pinecone_index.py
-python scripts/ingest_chembl_to_pinecone.py  # Optional: populate with ChEMBL data
-```
-
-### 4. Run the Application
-
-**Streamlit UI (Recommended):**
-```bash
-streamlit run app.py
-```
-
-**Command Line:**
-```bash
-# With VCF file (app auto-discovers data/genomes/ if --vcf omitted)
-python main.py --vcf data/genomes/chr22.vcf.gz --sample-id HG00096
-
-# Multi-chromosome (Big 3 + UGT1A1/SLCO1B1 when chr2/chr12 present)
-python main.py --vcf data/genomes/chr22.vcf.gz --vcf-chr10 data/genomes/chr10.vcf.gz --drug-name Warfarin
-
-# Manual profile
-python main.py --cyp2d6-status poor_metabolizer
-
-# Evaluation mode (CPIC-style benchmark)
-python main.py --benchmark cpic_examples.json
-```
+> **⚠️ Not for clinical use**  
+> SynthaTrial is a **research prototype**. Outputs are synthetic and must **not** be used for clinical decision-making, diagnosis, or treatment. Not medical advice.
 
 ---
 
-## 📚 Documentation
+## Quick Start
 
-**Comprehensive documentation is available in the `docs/` directory:**
+```bash
+conda create -n synthatrial python=3.10 && conda activate synthatrial
+conda install -c conda-forge rdkit pandas scipy scikit-learn -y
+pip install -r requirements.txt
+```
 
-- **[Documentation Index](docs/README.md)** - Overview of all documentation
-- **[VCF chromosome set](docs/VCF_CHROMOSOME_SET.md)** - Recommended chromosomes (gold standard subset, v5b URLs)
-- **[Deployment: Chromosome & ChEMBL data](docs/DEPLOYMENT_DATA.md)** - What to do with VCFs and ChEMBL when deploying (Docker, volumes, one-time download)
-- **[Setup Guide](docs/setup.md)** - Complete installation and configuration
-- **[Usage Guide](docs/usage.md)** - How to run simulations and interpret results
-- **[Implementation Details](docs/implementation.md)** - Technical architecture and code
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-- **[Paper Review](docs/paper-review.md)** - Research validation and results
-- **[Concepts](docs/concepts/)** - Pharmacogenomics, RAG, and vector databases explained
+Create `.env`: `GOOGLE_API_KEY=...` (required), `PINECONE_API_KEY=...` (optional, mock if missing), `PINECONE_INDEX=drug-index`.
 
-**Quick Links:**
-- [Complete Setup Guide](docs/setup.md) - Everything you need to get started
-- [Usage Examples](docs/usage.md) - Command-line and web interface examples
-- [Troubleshooting](docs/troubleshooting.md) - Fix common issues
-- [Technical Details](docs/implementation.md) - How the system works
+**Run:** `streamlit run app.py` (UI) or `python main.py --drug-name Warfarin` (CLI). For VCF-based profiles, put `.vcf.gz` files in `data/genomes/` (see [Data](#data-vcf--chembl)) or pass `--vcf` / `--vcf-chr10`.
 
 ---
 
-## 🏗️ Architecture
+## Data (VCF + ChEMBL)
+
+VCF and ChEMBL are **not** in the repo (gitignored). The app runs without them (manual profile + mock drug search).
+
+| Data | Purpose | Size | Required? |
+|------|---------|------|-----------|
+| **chr22** | CYP2D6 | ~200 MB | Yes for VCF profiles |
+| **chr10** | CYP2C19, CYP2C9 | ~700 MB | Recommended (Big 3) |
+| **chr2, chr12** | UGT1A1, SLCO1B1 | ~1.2 GB, ~700 MB | Optional |
+| **ChEMBL** | Drug similarity (Pinecone) | ~1–2 GB | Optional (mock if missing) |
+
+**EBI 1000 Genomes (v5b):**  
+Base: `https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/`  
+- chr22: `ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`  
+- chr10: `ALL.chr10.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz`  
+- chr2, chr12: same pattern with `chr2` / `chr12`.
+
+**One-time setup (local):**
+```bash
+mkdir -p data/genomes data/chembl
+python scripts/data_initializer.py --vcf chr22 chr10
+# Optional ChEMBL:
+# curl -L -o data/chembl/chembl_34_sqlite.tar.gz https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_34/chembl_34_sqlite.tar.gz
+# tar -xzf data/chembl/chembl_34_sqlite.tar.gz -C data/chembl
+```
+
+Any `.vcf.gz` in `data/genomes/` whose filename contains the chromosome (e.g. `chr22`, `chr10`) is **auto-discovered**. No need to pass `--vcf` if files are there.
+
+---
+
+## Deployment (Docker)
+
+Data is not in the image. Two options:
+
+1. **Volume mount:** Pre-download into `./data/genomes` and `./data/chembl` on the host; production Compose mounts `./data` → `/app/data`.
+2. **Download in container:** Start once, then e.g. `docker exec <container> python scripts/data_initializer.py --vcf chr22 chr10`. Use a **named volume** for `/app/data` so data persists.
+
+Without any data, the app runs in manual profile mode with mock drug search.
+
+---
+
+## Commands
+
+| Command | Description |
+|--------|-------------|
+| `streamlit run app.py` | Web UI (default port 8501) |
+| `python api.py` | FastAPI backend (port 8000); UI can call `/analyze` |
+| `python main.py --drug-name <name>` | CLI simulation (auto-discovers VCFs in `data/genomes/`) |
+| `python main.py --vcf <path> [--vcf-chr10 <path>] --drug-name Warfarin` | CLI with explicit VCFs |
+| `python main.py --benchmark cpic_examples.json` | Evaluation: predicted vs expected phenotype, match % |
+| `python tests/quick_test.py` | Quick integration test |
+| `python tests/validation_tests.py` | Full test suite |
+
+**CLI args:** `--drug-name`, `--drug-smiles`, `--vcf`, `--vcf-chr10`, `--sample-id`, `--cyp2d6-status`, `--benchmark <json>`.
+
+---
+
+## Architecture
 
 ```
 User Input (Drug SMILES + Patient Profile)
     ↓
-[Input Processor] → Molecular Fingerprint (2048-bit vector)
+[Input Processor] → 2048-bit Morgan fingerprint (RDKit)
     ↓
-[Vector Search] → Similar Drugs (from ChEMBL/Pinecone or mock)
+[Vector Search] → Similar drugs (ChEMBL/Pinecone or mock)
     ↓
-[VCF Processor] → Genetic Variants + Allele Calling (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1)
+[VCF Processor] → Variants + allele calling (chr22, 10, 2, 12)
     ↓
-[Variant DB] → PharmVar/CPIC allele→function mapping → Metabolizer status
+[Variant DB] → PharmVar/CPIC allele→function → metabolizer status
     ↓
-[Agent Engine] → LLM Prediction (RAG with retrieved context)
+[Agent Engine] → LLM prediction (RAG)
     ↓
-Output (Risk Level + Interpretation + RAG context: similar drugs, genetics, sources)
+Output: risk level, interpretation, + RAG context (similar drugs, genetics, sources)
 ```
+
+**Genes:** CYP2D6 (chr22), CYP2C19/CYP2C9 (chr10), UGT1A1 (chr2), SLCO1B1 (chr12). Allele calling (*1, *2, *4…) and interpretation in `src/variant_db.py` (`ALLELE_FUNCTION_MAP`). Profiles can show e.g. `CYP2D6 *1/*4 (Poor Metabolizer)`.
+
+**RAG transparency:** API response and UI show `similar_drugs_used`, `genetics_summary`, `context_sources` so predictions are auditable.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 SynthaTrial/
-├── docs/                      # Documentation (setup, usage, implementation, deployment, concepts)
+├── README.md           # This file (all important details)
+├── app.py              # Streamlit UI
+├── main.py             # CLI + --benchmark
+├── api.py              # FastAPI /analyze
+├── cpic_examples.json  # CPIC-style benchmark examples
+├── requirements.txt
 ├── src/
-│   ├── input_processor.py     # SMILES → Morgan fingerprint
-│   ├── vector_search.py      # Pinecone similarity search (ChEMBL/mock)
-│   ├── agent_engine.py        # LLM simulation (RAG)
-│   ├── vcf_processor.py       # VCF parsing, allele calling, profile generation
-│   ├── variant_db.py         # PharmVar/CPIC allele→function map, phenotype prediction
-│   └── chembl_processor.py   # ChEMBL database integration
-├── tests/
-│   ├── validation_tests.py   # Full test suite
-│   └── quick_test.py         # Quick integration test
-├── data/
-│   ├── chembl/               # ChEMBL SQLite (optional)
-│   └── genomes/              # VCF files (chr2, 10, 12, 22, etc.; optional)
-├── app.py                     # Streamlit UI (with prediction-context panel)
-├── main.py                    # CLI + --benchmark evaluation mode
-├── api.py                     # FastAPI /analyze (returns RAG context)
-├── cpic_examples.json         # CPIC-style benchmark examples
+│   ├── input_processor.py   # SMILES → fingerprint
+│   ├── vector_search.py     # Pinecone / mock
+│   ├── agent_engine.py      # LLM simulation
+│   ├── vcf_processor.py     # VCF parsing, allele call, profile
+│   ├── variant_db.py        # Allele map, phenotype prediction
+│   └── chembl_processor.py # ChEMBL integration
 ├── scripts/
-│   ├── data_initializer.py   # Download VCF/ChEMBL
-│   ├── download_vcf_files.py # Chromosome VCF downloads
+│   ├── data_initializer.py  # Download VCF/ChEMBL
+│   ├── download_vcf_files.py
 │   ├── setup_pinecone_index.py
 │   └── ingest_chembl_to_pinecone.py
-└── requirements.txt
+├── tests/
+│   ├── validation_tests.py
+│   └── quick_test.py
+└── data/
+    ├── genomes/   # VCFs (optional)
+    └── chembl/    # ChEMBL SQLite (optional)
 ```
 
 ---
 
-## ✨ Features
+## Troubleshooting
 
-- ✅ **VCF File Processing** - Multi-chromosome (chr2, 10, 12, 22) with auto-discovery in `data/genomes/`
-- ✅ **Allele Calling & Interpretation** - PharmVar/CPIC-style mapping (*1, *2, *4… → function); profiles show allele call when available
-- ✅ **Pharmacogenomics Genes** - CYP2D6, CYP2C19, CYP2C9 (Big 3) + UGT1A1 (irinotecan), SLCO1B1 (statins)
-- ✅ **ChEMBL Integration** - Drug data for Pinecone vector search (mock mode if no key)
-- ✅ **RAG-Enhanced LLM** - Simulation and explanation with retrieved similar drugs
-- ✅ **Transparent RAG Context** - UI and API show similar drugs used, genetics summary, and data sources
-- ✅ **Evaluation Mode** - `python main.py --benchmark cpic_examples.json` for predicted vs expected phenotype and match %
-- ✅ **Patient Profile Generation** - From VCF or manual input; optional allele-level detail
-- ✅ **Streamlit UI** - Web interface with prediction-context panel
-- ✅ **REST API** - FastAPI `/analyze` with optional RAG context in response
-- ✅ **Comprehensive Testing** - Validation tests and quick integration test
+- **RDKit not found:** `conda install -c conda-forge rdkit`
+- **GOOGLE_API_KEY missing:** Set in `.env` or environment; required for LLM.
+- **Pinecone/index:** Optional; app uses mock drugs if not set. To use ChEMBL: `python scripts/setup_pinecone_index.py` then `python scripts/ingest_chembl_to_pinecone.py`
+- **VCF not found:** Ensure files are in `data/genomes/` with chromosome in filename (e.g. `chr22`, `chr10`) or pass `--vcf` / `--vcf-chr10`.
+- **Benchmark:** `python main.py --benchmark cpic_examples.json` (no VCF needed).
 
 ---
 
-## 🔧 Key Components
-
-### Input Processor
-Converts SMILES strings to 2048-bit Morgan fingerprints using RDKit.
-
-### Vector Search
-Searches Pinecone vector database for similar drugs based on molecular structure.
-
-### VCF Processor
-Extracts gene variants (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1) from multi-chromosome VCFs and infers metabolizer status with **allele calling** (*1, *2, *4…) and PharmVar/CPIC-style interpretation. Auto-discovers VCFs in `data/genomes/`. Evaluation mode: `python main.py --benchmark cpic_examples.json`.
-
-### ChEMBL Processor
-Extracts approved drugs, targets, and side effects from ChEMBL SQLite database.
-
-### Agent Engine
-Uses Gemini LLM with RAG for simulation and explanation of drug–gene interactions (research prototype; not for clinical use).
-
----
-
-## 🚢 Deploying
-
-Chromosome VCF files and the ChEMBL database are **not** included in the repo or Docker image (they are large and gitignored). For deployment options (volume mount, one-time download in container, minimal vs full data), see **[Deployment: Chromosome & ChEMBL data](docs/DEPLOYMENT_DATA.md)**.
-
----
-
-## 🧪 Testing
-
-```bash
-# Run validation tests
-python tests/validation_tests.py
-
-# Quick integration test
-python tests/quick_test.py
-```
-
----
-
-## 📖 Learn More
-
-- **Pharmacogenomics Concepts:** [docs/concepts/pharmacogenomics.md](docs/concepts/pharmacogenomics.md)
-- **Vector Databases:** [docs/concepts/vector_databases.md](docs/concepts/vector_databases.md)
-- **RAG Explained:** [docs/concepts/rag_explained.md](docs/concepts/rag_explained.md)
-- **Implementation (VCF, variant DB, API):** [docs/implementation.md](docs/implementation.md)
-
----
-
-## 🐛 Troubleshooting
-
-**Common issues and solutions are documented in:**
-- [Troubleshooting Guide](docs/troubleshooting.md)
-
-**Quick fixes:**
-- **RDKit not found:** Use `conda install -c conda-forge rdkit`
-- **Pinecone index not found:** Run `python scripts/setup_pinecone_index.py`
-- **ChEMBL database not found:** Extract the tar.gz file (see setup guide)
-
----
-
-## 📝 Requirements
+## Requirements
 
 - Python 3.10+
-- Conda (for RDKit installation)
-- API Keys:
-  - Google API Key (required for Gemini LLM)
-  - Pinecone API Key (optional, mock mode if missing)
+- Conda (recommended for RDKit)
+- GOOGLE_API_KEY (required for simulation)
+- PINECONE_API_KEY (optional)
 
 ---
 
-## 🔗 Resources
+## Resources
 
-- **1000 Genomes Project:** https://www.internationalgenome.org/
-- **ChEMBL Database:** https://www.ebi.ac.uk/chembl/
-- **Pinecone:** https://www.pinecone.io/
-- **RDKit:** https://www.rdkit.org/
-- **PharmVar:** https://www.pharmvar.org/ (CYP allele definitions)
-
----
-
-## 📄 License
-
-This is an MVP prototype for research and development purposes.
+- 1000 Genomes: https://www.internationalgenome.org/
+- ChEMBL: https://www.ebi.ac.uk/chembl/
+- PharmVar: https://www.pharmvar.org/
+- RDKit: https://www.rdkit.org/
 
 ---
 
-## 🙏 Acknowledgments
-
-- 1000 Genomes Project for genomic data
-- ChEMBL team for drug database
-- RDKit community for cheminformatics tools
-- LangChain for LLM integration framework
-
----
-
-*For detailed documentation, see [docs/README.md](docs/README.md)*
+*Research prototype. Not for clinical use.*

@@ -262,7 +262,7 @@ for chromosome in ['chr22', 'chr10', 'chr2', 'chr12']:
         if chromosome == 'chr22':
             print('⚠️  Chromosome 22 VCF file not found at $BASE_PATH/data/genomes/chr22.vcf.gz')
             print('   Mount VCF files as volumes or run: python scripts/data_initializer.py --vcf chr22 chr10')
-            print('   See docs/DEPLOYMENT_DATA.md for deployment options.')
+            print('   See root README for deployment options.')
         elif chromosome == 'chr10':
             print('⚠️  Chromosome 10 VCF file not found; only CYP2D6 will be used.')
         # chr2/chr12 are optional; no need to warn for every missing optional chr
@@ -272,7 +272,7 @@ if status.chembl_database:
     print('✅ ChEMBL database found')
 else:
     print('⚠️  ChEMBL database not found at $BASE_PATH/data/chembl/chembl_34_sqlite/chembl_34.db')
-    print('   Vector search will use mock data. See docs/DEPLOYMENT_DATA.md for setup.')
+    print('   Vector search will use mock data. See root README for setup.')
 "
 }
 

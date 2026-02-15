@@ -334,7 +334,7 @@ with tab4:
     - 🤖 **Agentic AI**: LLM-driven reasoning for drug-gene interactions.
     - 📦 **Multi-chromosome profiles**: CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1.
     
-    **Deployment:** See [Deployment data](docs/DEPLOYMENT_DATA.md) for VCF and ChEMBL setup.
+    **Deployment:** See root README for VCF and ChEMBL setup.
     
     *Built by Anukriti AI Team.*
     """)

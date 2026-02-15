@@ -141,7 +141,7 @@ class DataInitializer:
     """Main data initialization orchestrator."""
 
     # VCF file URLs (1000 Genomes EBI release 20130502, v5b — v5a returns 404)
-    # See docs/VCF_CHROMOSOME_SET.md for recommended chromosome set.
+    # See root README for recommended chromosome set.
     EBI_VCF_BASE = "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
     VCF_URLS = {
         "chr22": f"{EBI_VCF_BASE}/ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz",
@@ -710,7 +710,7 @@ class DataInitializer:
         Initialize all required data files.
 
         Args:
-            chromosomes: List of chromosomes to download (defaults to ['chr22', 'chr10']; see docs/VCF_CHROMOSOME_SET.md)
+            chromosomes: List of chromosomes to download (defaults to ['chr22', 'chr10']; see root README)
 
         Returns:
             True if all initialization successful, False otherwise

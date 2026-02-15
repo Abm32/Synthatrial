@@ -12,7 +12,7 @@ Features:
 - Corruption detection using multiple validation methods
 - Progress tracking with ETA and speed monitoring
 - Retry logic with exponential backoff
-- Multi-chromosome support (chr2, chr6, chr10, chr11, chr12, chr19, chr22; see docs/VCF_CHROMOSOME_SET.md)
+- Multi-chromosome support (chr2, chr6, chr10, chr11, chr12, chr19, chr22; see root README)
 - Detailed logging and error reporting
 - Integration with data initializer orchestrator
 
@@ -178,7 +178,7 @@ class VCFDownloader:
     """Specialized VCF file downloader with 1000 Genomes Project integration."""
 
     # 1000 Genomes Phase 3 (EBI release 20130502) — use v5b (v5a returns 404)
-    # See docs/VCF_CHROMOSOME_SET.md for "gold standard" representative set rationale.
+    # See root README for chromosome set and VCF URLs.
     EBI_BASE = "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
     VCF_FILES = {
         "chr22": VCFFileInfo(
