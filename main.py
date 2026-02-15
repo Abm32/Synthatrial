@@ -8,24 +8,81 @@ Supports both manual patient profiles and VCF-derived profiles from 1000 Genomes
 """
 
 import argparse
+import json
+import os
 
 from src.agent_engine import run_simulation
 from src.config import config
 from src.exceptions import ConfigurationError
 from src.input_processor import get_drug_fingerprint
 from src.logging_config import setup_logging
-from src.vcf_processor import generate_patient_profile_from_vcf, get_sample_ids_from_vcf
+from src.variant_db import get_phenotype_prediction
+from src.vcf_processor import (
+    discover_vcf_paths,
+    generate_patient_profile_from_vcf,
+    get_sample_ids_from_vcf,
+)
 from src.vector_search import find_similar_drugs
 
 # Set up logging
 setup_logging()
 
 
+def run_benchmark(json_path: str) -> None:
+    """
+    Run evaluation mode: load CPIC-style examples from JSON, report predicted vs expected
+    phenotype and match %. JSON format: list of {"gene", "alleles", "expected_phenotype"}
+    with optional "drug_name" and "description".
+    """
+    if not os.path.isfile(json_path):
+        print(f"Error: Benchmark file not found: {json_path}")
+        return
+    with open(json_path, "r") as f:
+        examples = json.load(f)
+    if not isinstance(examples, list):
+        examples = [examples]
+    results = []
+    for i, row in enumerate(examples):
+        gene = row.get("gene", "CYP2D6")
+        alleles = row.get("alleles", [])
+        expected = (row.get("expected_phenotype") or "").strip().lower().replace(" ", "_")
+        copy_number = row.get("copy_number", 2)
+        predicted = get_phenotype_prediction(gene, alleles, copy_number)
+        match = predicted == expected
+        results.append({
+            "gene": gene,
+            "alleles": alleles,
+            "expected": expected,
+            "predicted": predicted,
+            "match": match,
+            "drug_name": row.get("drug_name", ""),
+            "description": row.get("description", ""),
+        })
+    # Report
+    matches = sum(1 for r in results if r["match"])
+    pct = (100.0 * matches / len(results)) if results else 0
+    print("\n=== SynthaTrial CPIC Benchmark ===\n")
+    print(f"{'Gene':<10} {'Alleles':<20} {'Expected':<25} {'Predicted':<25} {'Match':<6}")
+    print("-" * 90)
+    for r in results:
+        alleles_str = ",".join(r["alleles"]) if r["alleles"] else "*1/*1"
+        print(f"{r['gene']:<10} {alleles_str:<20} {r['expected']:<25} {r['predicted']:<25} {'Yes' if r['match'] else 'No':<6}")
+    print("-" * 90)
+    print(f"Match: {matches}/{len(results)} ({pct:.1f}%)\n")
+    if any(not r["match"] for r in results):
+        print("Mismatches:")
+        for r in results:
+            if not r["match"]:
+                print(f"  {r['gene']} {r['alleles']}: expected {r['expected']}, got {r['predicted']}")
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Run pharmacogenomics simulation with support for Big 3 enzymes (CYP2D6, CYP2C19, CYP2C9)",
+        description="Run pharmacogenomics simulation (research prototype; not for clinical use). Supports Big 3 enzymes and UGT1A1/SLCO1B1.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Disclaimer: SynthaTrial is a research prototype. Outputs are synthetic predictions and must not be used for clinical decision-making.
+
 Examples:
   # Single chromosome (CYP2D6 only):
   python main.py --vcf data/genomes/chr22.vcf.gz --drug-name Codeine
@@ -35,7 +92,15 @@ Examples:
 
   # Manual profile:
   python main.py --cyp2d6-status poor_metabolizer --drug-name Tramadol
+
+  # Evaluation mode (CPIC benchmark):
+  python main.py --benchmark cpic_examples.json
         """,
+    )
+    parser.add_argument(
+        "--benchmark",
+        metavar="JSON",
+        help="Run evaluation mode: load CPIC-style examples from JSON, report predicted vs expected phenotype and match %%",
     )
     parser.add_argument(
         "--drug-smiles", default="CC(=O)Nc1ccc(O)cc1", help="SMILES string of drug"
@@ -62,27 +127,53 @@ Examples:
 
     args = parser.parse_args()
 
+    # Evaluation mode: benchmark predicted vs expected phenotypes
+    if args.benchmark:
+        run_benchmark(args.benchmark)
+        return
+
+    # Resolve VCF paths: CLI args > env (config) > discovered files in data/genomes
+    genomes_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "genomes")
+    discovered = discover_vcf_paths(genomes_dir)
+    vcf_chr22 = args.vcf or config.VCF_CHR22_PATH or discovered.get("chr22")
+    vcf_chr10 = args.vcf_chr10 or config.VCF_CHR10_PATH or discovered.get("chr10")
+    # Build full chromosome map for profile (chr2=UGT1A1, chr10=CYP2C9/CYP2C19, chr12=SLCO1B1, chr22=CYP2D6)
+    vcf_paths_by_chrom = dict(discovered) if discovered else {}
+    if vcf_chr22:
+        vcf_paths_by_chrom["chr22"] = vcf_chr22
+    if vcf_chr10:
+        vcf_paths_by_chrom["chr10"] = vcf_chr10
+
     user_drug_smiles = args.drug_smiles
     user_drug_name = args.drug_name
 
     print(f"--- Starting Simulation for {user_drug_name} ---")
 
     # 2. Define Patient Profile
-    if args.vcf and os.path.exists(args.vcf):
+    if vcf_chr22 and os.path.exists(vcf_chr22):
         print(f"\n[VCF Mode] Using patient profile from VCF files")
-        print(f"  Chromosome 22: {args.vcf}")
-        if args.vcf_chr10:
-            print(f"  Chromosome 10: {args.vcf_chr10}")
-            print("  ✓ Big 3 enzymes enabled (CYP2D6, CYP2C19, CYP2C9)")
-        else:
-            print("  ⚠ Only CYP2D6 enabled (add --vcf-chr10 for Big 3 enzymes)")
+        # List all discovered chromosomes (from data/genomes)
+        if discovered:
+            chroms_sorted = sorted(discovered.keys(), key=lambda c: (len(c), c))
+            print(f"  Discovered chromosomes ({len(discovered)}): {', '.join(chroms_sorted)}")
+        print(f"  Chromosome 22 (CYP2D6): {vcf_chr22}")
+        if vcf_chr10:
+            print(f"  Chromosome 10 (CYP2C9/CYP2C19): {vcf_chr10}")
+        if vcf_paths_by_chrom.get("chr2"):
+            print(f"  Chromosome 2 (UGT1A1): {vcf_paths_by_chrom['chr2']}")
+        if vcf_paths_by_chrom.get("chr12"):
+            print(f"  Chromosome 12 (SLCO1B1): {vcf_paths_by_chrom['chr12']}")
+        if vcf_chr10:
+            print("  ✓ Big 3 enzymes + UGT1A1/SLCO1B1 when chr2/chr12 present")
+        elif not (vcf_paths_by_chrom.get("chr2") or vcf_paths_by_chrom.get("chr12")):
+            print("  ⚠ Only CYP2D6 enabled (add chr10/chr2/chr12 VCFs for full profile)")
 
         try:
             if args.sample_id:
                 sample_id = args.sample_id
             else:
                 # Get first available sample from chromosome 22
-                sample_ids = get_sample_ids_from_vcf(args.vcf, limit=1)
+                sample_ids = get_sample_ids_from_vcf(vcf_chr22, limit=1)
                 if sample_ids:
                     sample_id = sample_ids[0]
                 else:
@@ -90,12 +181,13 @@ Examples:
 
             print(f"  Sample ID: {sample_id}")
             patient_profile = generate_patient_profile_from_vcf(
-                args.vcf,
+                vcf_chr22,
                 sample_id,
                 age=45,
                 conditions=["Chronic Liver Disease (Mild)"],
                 lifestyle={"alcohol": "Moderate", "smoking": "Non-smoker"},
-                vcf_path_chr10=args.vcf_chr10,
+                vcf_path_chr10=vcf_chr10,
+                vcf_paths_by_chrom=vcf_paths_by_chrom,
             )
             print("  ✓ Generated patient profile from VCF")
         except Exception as e:
