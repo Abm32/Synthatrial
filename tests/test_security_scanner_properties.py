@@ -121,7 +121,7 @@ class TestSecurityScannerProperties:
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # Test auto-detection with no scanners available
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
                     result = Mock()
@@ -138,7 +138,7 @@ class TestSecurityScannerProperties:
                     SecurityScanner(scanner_type=ScannerType.AUTO, output_dir=temp_dir)
 
             # Test auto-detection with Trivy available
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -163,7 +163,7 @@ class TestSecurityScannerProperties:
                 assert scanner.available_scanners["grype"] is False
 
             # Test auto-detection with Grype available (Trivy not available)
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -282,7 +282,7 @@ class TestSecurityScannerProperties:
         **Validates: Requirements 4.1, 4.3**
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner availability
                 mock_run.return_value.returncode = 0
                 mock_run.return_value.stdout = "trivy version 0.45.0"
@@ -348,7 +348,7 @@ class TestSecurityScannerProperties:
         assume(len(safe_image_name) > 0)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner availability
                 mock_run.return_value.returncode = 0
                 mock_run.return_value.stdout = "trivy version 0.45.0"
@@ -411,7 +411,7 @@ class TestSecurityScannerProperties:
         **Validates: Requirements 4.1, 4.3**
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner availability
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -528,7 +528,7 @@ class TestSecurityScannerProperties:
         **Validates: Requirements 4.1, 4.3**
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner availability
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []

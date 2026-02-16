@@ -44,7 +44,7 @@ class TestSecurityScannerIntegration:
     def test_scanner_initialization_without_tools(self):
         """Test scanner initialization when no scanning tools are available"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock that no scanners are available - return non-zero returncode
                 def mock_subprocess(*args, **kwargs):
                     result = Mock()
@@ -63,7 +63,7 @@ class TestSecurityScannerIntegration:
     def test_scanner_initialization_with_trivy(self):
         """Test scanner initialization when Trivy is available"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
                     if "trivy" in args[0]:
@@ -87,7 +87,7 @@ class TestSecurityScannerIntegration:
     def test_scanner_initialization_with_grype(self):
         """Test scanner initialization when Grype is available"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -120,7 +120,7 @@ class TestSecurityScannerIntegration:
     def test_trivy_scan_mock_success(self):
         """Test successful Trivy scan with mock data"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner detection
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -184,7 +184,7 @@ class TestSecurityScannerIntegration:
     def test_grype_scan_mock_success(self):
         """Test successful Grype scan with mock data"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner detection
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -246,7 +246,7 @@ class TestSecurityScannerIntegration:
     def test_scan_failure_handling(self):
         """Test handling of scan failures"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scanner detection success but scan failure
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -288,7 +288,7 @@ class TestSecurityScannerIntegration:
     def test_report_file_generation(self):
         """Test that report files are generated correctly"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock successful scan
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -336,7 +336,7 @@ class TestSecurityScannerIntegration:
     def test_html_report_generation(self):
         """Test HTML report generation"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock successful scan with vulnerabilities
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -401,7 +401,7 @@ class TestSecurityScannerIntegration:
     def test_severity_filtering(self):
         """Test severity filtering functionality"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 # Mock scan with multiple severity levels
                 def mock_subprocess(*args, **kwargs):
                     cmd = args[0] if args else []
@@ -516,7 +516,7 @@ class TestSecurityScannerIntegration:
     def test_docker_image_listing_mock(self):
         """Test Docker image listing functionality with mock"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
                     if "--version" in args[0]:
@@ -558,7 +558,7 @@ class TestSecurityScannerIntegration:
 
     def test_cli_integration_mock(self):
         """Test CLI integration with mock subprocess"""
-        with patch("subprocess.run") as mock_run:
+        with patch("scripts.security_scanner.subprocess.run") as mock_run:
             # Mock the CLI call
             result = Mock()
             result.returncode = 0
@@ -587,7 +587,7 @@ class TestSecurityScannerIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             output_dir = Path(temp_dir) / "security_reports" / "nested"
 
-            with patch("subprocess.run") as mock_run:
+            with patch("scripts.security_scanner.subprocess.run") as mock_run:
                 mock_run.return_value.returncode = 0
                 mock_run.return_value.stdout = "trivy version 0.45.0"
 

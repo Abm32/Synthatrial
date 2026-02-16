@@ -192,26 +192,9 @@ jobs:
           echo "**Scan Date:** $(date -u)" >> ${{ env.SECURITY_REPORT_DIR }}/bandit-summary.md
           echo "**Files Scanned:** $(find src/ scripts/ -name '*.py' | wc -l)" >> ${{ env.SECURITY_REPORT_DIR }}/bandit-summary.md
 
-          # Extract issue counts
+          # Extract issue counts (single-line Python to avoid YAML/indent issues)
           if [ -f ${{ env.SECURITY_REPORT_DIR }}/bandit-report.json ]; then
-            python3 -c "
-            import json
-            with open('${{ env.SECURITY_REPORT_DIR }}/bandit-report.json', 'r') as f:
-                data = json.load(f)
-
-            metrics = data.get('metrics', {})
-            print(f'**Lines of Code:** {metrics.get(\"_totals\", {}).get(\"loc\", \"Unknown\")}')
-            print(f'**Issues Found:** {len(data.get(\"results\", []))}')
-
-            # Count by severity
-            severity_counts = {}
-            for result in data.get('results', []):
-                severity = result.get('issue_severity', 'UNKNOWN')
-                severity_counts[severity] = severity_counts.get(severity, 0) + 1
-
-            for severity, count in severity_counts.items():
-                print(f'**{severity}:** {count}')
-            " >> ${{ env.SECURITY_REPORT_DIR }}/bandit-summary.md
+            python3 -c "import json; from collections import Counter; d=json.load(open('${{ env.SECURITY_REPORT_DIR }}/bandit-report.json')); m=d.get('metrics',{}); print('**Lines of Code:**', m.get('_totals',{}).get('loc','Unknown')); print('**Issues Found:**', len(d.get('results',[]))); [print('**'+k+':**',v) for k,v in Counter(r.get('issue_severity','UNKNOWN') for r in d.get('results',[])).items()]" >> ${{ env.SECURITY_REPORT_DIR }}/bandit-summary.md
           fi
         continue-on-error: true
 
@@ -512,12 +495,7 @@ jobs:
 
           # Count vulnerabilities from summary
           if [ -f ${{ env.SECURITY_REPORT_DIR }}/dependency-security-summary.json ]; then
-            TOTAL_VULNS=$(python3 -c "
-            import json
-            with open('${{ env.SECURITY_REPORT_DIR }}/dependency-security-summary.json') as f:
-                data = json.load(f)
-            print(data['total_vulnerabilities'])
-            ")
+            TOTAL_VULNS=$(python3 -c "import json; data=json.load(open('${{ env.SECURITY_REPORT_DIR }}/dependency-security-summary.json')); print(data['total_vulnerabilities'])")
 
             echo "dependency_vulnerabilities=$TOTAL_VULNS" >> $GITHUB_OUTPUT
 
@@ -601,6 +579,7 @@ jobs:
       - name: Generate container SBOM
         run: |
           echo "📋 Generating Software Bill of Materials..."
+          mkdir -p ${{ env.SECURITY_REPORT_DIR }}
 
           # Generate SBOM with Syft
           syft synthatrial:security-scan-${{ matrix.image-type }} -o json > ${{ env.SECURITY_REPORT_DIR }}/sbom-${{ matrix.image-type }}.json
@@ -777,26 +756,9 @@ jobs:
 
           # Read analysis results
           if [ -f ${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json ]; then
-            TOTAL_VULNS=$(python3 -c "
-            import json
-            with open('${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json') as f:
-                data = json.load(f)
-            print(data['total_vulnerabilities'])
-            ")
-
-            CRITICAL_VULNS=$(python3 -c "
-            import json
-            with open('${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json') as f:
-                data = json.load(f)
-            print(data['severity_counts']['critical'])
-            ")
-
-            HIGH_VULNS=$(python3 -c "
-            import json
-            with open('${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json') as f:
-                data = json.load(f)
-            print(data['severity_counts']['high'])
-            ")
+            TOTAL_VULNS=$(python3 -c "import json; data=json.load(open('${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json')); print(data['total_vulnerabilities'])")
+            CRITICAL_VULNS=$(python3 -c "import json; data=json.load(open('${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json')); print(data['severity_counts']['critical'])")
+            HIGH_VULNS=$(python3 -c "import json; data=json.load(open('${{ env.SECURITY_REPORT_DIR }}/container-analysis-${{ matrix.image-type }}.json')); print(data['severity_counts']['high'])")
 
             echo "Container ${{ matrix.image-type }}: $TOTAL_VULNS total vulnerabilities ($CRITICAL_VULNS critical, $HIGH_VULNS high)"
 
