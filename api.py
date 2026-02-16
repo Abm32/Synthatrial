@@ -72,10 +72,12 @@ class AnalyzeResponse(BaseModel):
         None, description="Retrieved similar drugs used for prediction"
     )
     genetics_summary: Optional[str] = Field(
-        None, description="Genetic variants / metabolizer status used (e.g. CYP2D6 poor metabolizer)"
+        None,
+        description="Genetic variants / metabolizer status used (e.g. CYP2D6 poor metabolizer)",
     )
     context_sources: Optional[str] = Field(
-        None, description="Source of similar drugs (e.g. ChEMBL via Pinecone, Mock data)"
+        None,
+        description="Source of similar drugs (e.g. ChEMBL via Pinecone, Mock data)",
     )
 
 
@@ -263,8 +265,12 @@ async def analyze_drug(request: AnalyzeRequest):
         )
 
         risk_level = extract_risk_level(result)
-        context_sources = "ChEMBL (via Pinecone)" if used_pinecone else "Mock data (no Pinecone key)"
-        similar_names = [s.split("|")[0].strip() if "|" in s else s for s in similar_drugs]
+        context_sources = (
+            "ChEMBL (via Pinecone)" if used_pinecone else "Mock data (no Pinecone key)"
+        )
+        similar_names = [
+            s.split("|")[0].strip() if "|" in s else s for s in similar_drugs
+        ]
 
         logger.info(f"Simulation completed successfully. Risk level: {risk_level}")
 
@@ -372,4 +378,4 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
 
     logger.info(f"Starting Anukriti AI API on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)  # nosec B104 - bind all for container

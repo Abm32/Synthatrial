@@ -6,8 +6,7 @@ Includes caching for performance optimization.
 """
 
 import logging
-from functools import lru_cache
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 from rdkit import Chem, DataStructs
@@ -20,7 +19,7 @@ from src.exceptions import InvalidSMILESError
 logger = logging.getLogger(__name__)
 
 # Cache for fingerprints (LRU cache with configurable size)
-_fingerprint_cache = {}
+_fingerprint_cache: Dict[str, List[int]] = {}
 
 
 def validate_smiles(smiles: str) -> bool:
@@ -63,7 +62,8 @@ def get_drug_fingerprint(smiles: str, use_cache: bool = None) -> List[int]:
     # Check cache if enabled
     if use_cache and smiles in _fingerprint_cache:
         logger.debug(f"Using cached fingerprint for SMILES: {smiles[:50]}...")
-        return _fingerprint_cache[smiles]
+        cached: List[int] = _fingerprint_cache[smiles]
+        return cached
 
     # Validate and process SMILES
     try:
@@ -74,14 +74,14 @@ def get_drug_fingerprint(smiles: str, use_cache: bool = None) -> List[int]:
         logger.debug(f"Generating fingerprint for SMILES: {smiles[:50]}...")
 
         # Generate Morgan Fingerprint (Radius 2)
-        fp = AllChem.GetMorganFingerprintAsBitVect(
+        fp = AllChem.GetMorganFingerprintAsBitVect(  # type: ignore[attr-defined]
             mol, config.FINGERPRINT_RADIUS, nBits=config.FINGERPRINT_BITS
         )
 
         # Convert to numpy array first, then to Python list
         arr = np.zeros((config.FINGERPRINT_BITS,), dtype=np.int32)
         DataStructs.ConvertToNumpyArray(fp, arr)
-        fingerprint = arr.tolist()
+        fingerprint: List[int] = arr.tolist()
 
         # Cache if enabled
         if use_cache:
@@ -100,5 +100,5 @@ def get_drug_fingerprint(smiles: str, use_cache: bool = None) -> List[int]:
 def clear_fingerprint_cache():
     """Clear the fingerprint cache."""
     global _fingerprint_cache
-    _fingerprint_cache.clear()
+    _fingerprint_cache = {}
     logger.info("Fingerprint cache cleared")

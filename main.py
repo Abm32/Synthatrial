@@ -10,6 +10,7 @@ Supports both manual patient profiles and VCF-derived profiles from 1000 Genomes
 import argparse
 import json
 import os
+from typing import List, Union, cast
 
 from src.agent_engine import run_simulation
 from src.allele_caller import call_gene_from_variants, interpret_cyp2c19
@@ -17,6 +18,7 @@ from src.config import config
 from src.exceptions import ConfigurationError
 from src.input_processor import get_drug_fingerprint
 from src.logging_config import setup_logging
+from src.slco1b1_caller import interpret_slco1b1_from_vcf
 from src.variant_db import get_phenotype_prediction
 from src.vcf_processor import (
     discover_vcf_paths,
@@ -25,7 +27,6 @@ from src.vcf_processor import (
 )
 from src.vector_search import find_similar_drugs
 from src.warfarin_caller import interpret_warfarin
-from src.slco1b1_caller import interpret_slco1b1_from_vcf
 
 # Set up logging
 setup_logging()
@@ -67,6 +68,8 @@ def run_benchmark(json_path: str) -> None:
         examples = [examples]
     results = []
     for i, row in enumerate(examples):
+        predicted: str = ""
+        alleles: Union[List[str], str] = []
         gene = row.get("gene", "CYP2D6")
         expected_display = row.get("expected")
         expected_normalized = (
@@ -79,9 +82,18 @@ def run_benchmark(json_path: str) -> None:
         if expected_display and variants_raw and "rs4149056" in variants_raw:
             raw_rs = variants_raw.get("rs4149056")
             if isinstance(raw_rs, (list, tuple)) and len(raw_rs) >= 3:
-                slco_var_map = {"rs4149056": (str(raw_rs[0]), str(raw_rs[1]), str(raw_rs[2]))}
-            elif isinstance(raw_rs, dict) and "ref" in raw_rs and "alt" in raw_rs and "gt" in raw_rs:
-                slco_var_map = {"rs4149056": (raw_rs["ref"], raw_rs["alt"], raw_rs["gt"])}
+                slco_var_map = {
+                    "rs4149056": (str(raw_rs[0]), str(raw_rs[1]), str(raw_rs[2]))
+                }
+            elif (
+                isinstance(raw_rs, dict)
+                and "ref" in raw_rs
+                and "alt" in raw_rs
+                and "gt" in raw_rs
+            ):
+                slco_var_map = {
+                    "rs4149056": (raw_rs["ref"], raw_rs["alt"], raw_rs["gt"])
+                }
         if slco_var_map:
             slco_result = interpret_slco1b1_from_vcf(slco_var_map)
             if slco_result:
@@ -90,15 +102,17 @@ def run_benchmark(json_path: str) -> None:
                 alleles = slco_result["genotype"]
                 expected_out = expected_display
                 gene = "SLCO1B1"
-                results.append({
-                    "gene": gene,
-                    "alleles": alleles,
-                    "expected": expected_out,
-                    "predicted": predicted,
-                    "match": match,
-                    "drug_name": row.get("drug_name", ""),
-                    "description": row.get("description", ""),
-                })
+                results.append(
+                    {
+                        "gene": gene,
+                        "alleles": alleles,
+                        "expected": expected_out,
+                        "predicted": predicted,
+                        "match": match,
+                        "drug_name": row.get("drug_name", ""),
+                        "description": row.get("description", ""),
+                    }
+                )
                 continue
         # Warfarin: variants include VKORC1 (rs9923231) and optional CYP2C9; expected = recommendation text
         if expected_display and variants_raw and _is_simple_variant_dict(variants_raw):
@@ -121,14 +135,17 @@ def run_benchmark(json_path: str) -> None:
                     cpic_result = call_gene_from_variants(gene, variant_map)
                     if cpic_result:
                         predicted = cpic_result["phenotype_normalized"]
-                        alleles = cpic_result.get("alleles_detected", [])
+                        alleles = cast(
+                            List[str],
+                            cpic_result.get("alleles_detected", []),
+                        )
                     else:
                         predicted = "unknown"
                         alleles = []
                     expected_out = expected_normalized
                     match = predicted == expected_normalized
                 else:
-                    alleles = row.get("alleles", [])
+                    alleles = cast(List[str], row.get("alleles", []))
                     copy_number = row.get("copy_number", 2)
                     predicted = get_phenotype_prediction(gene, alleles, copy_number)
                     expected_out = expected_normalized
@@ -139,14 +156,17 @@ def run_benchmark(json_path: str) -> None:
                 cpic_result = call_gene_from_variants(gene, variant_map)
                 if cpic_result:
                     predicted = cpic_result["phenotype_normalized"]
-                    alleles = cpic_result.get("alleles_detected", [])
+                    alleles = cast(
+                        List[str],
+                        cpic_result.get("alleles_detected", []),
+                    )
                 else:
                     predicted = "unknown"
                     alleles = []
                 expected_out = expected_normalized
                 match = predicted == expected_normalized
             else:
-                alleles = row.get("alleles", [])
+                alleles = cast(List[str], row.get("alleles", []))
                 copy_number = row.get("copy_number", 2)
                 predicted = get_phenotype_prediction(gene, alleles, copy_number)
                 expected_out = expected_normalized

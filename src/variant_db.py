@@ -8,7 +8,7 @@ This replaces naive variant counting with targeted allele lookup based on
 specific rsIDs (Reference SNP IDs) that are known to affect enzyme function.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # ---------------------------------------------------------------------------
 # Allele → Function mapping (PharmVar/CPIC-style)
@@ -257,7 +257,7 @@ VARIANT_DB = {
             "allele": "*28",
             "impact": "Reduced",
             "name": "TA Repeat Insertion",
-            "activity_score": 0.5, # Reduced expression
+            "activity_score": 0.5,  # Reduced expression
         },
         "rs4148323": {
             "allele": "*6",
@@ -265,12 +265,12 @@ VARIANT_DB = {
             "name": "G71R",
             "activity_score": 0.5,
         },
-        "rs3064744": { # Gilbert's syndrome marker (often linked to *28)
-             "allele": "*28", # Linked
-             "impact": "Reduced",
-             "name": "Promoter Variant",
-             "activity_score": 0.5,
-        }
+        "rs3064744": {  # Gilbert's syndrome marker (often linked to *28)
+            "allele": "*28",  # Linked
+            "impact": "Reduced",
+            "name": "Promoter Variant",
+            "activity_score": 0.5,
+        },
     },
     # --- Transporters ---
     "SLCO1B1": {
@@ -278,15 +278,15 @@ VARIANT_DB = {
             "allele": "*5",
             "impact": "Reduced Transport",
             "name": "Val174Ala",
-            "activity_score": 0.0, # Loss of function
+            "activity_score": 0.0,  # Loss of function
         },
         "rs2306283": {
             "allele": "*15",
             "impact": "Reduced Transport",
             "name": "Asp130Asn",
             "activity_score": 0.5,
-        }
-    }
+        },
+    },
 }
 
 
@@ -304,7 +304,7 @@ def get_activity_score_for_allele(gene: str, rsid: str) -> float:
     gene_db = VARIANT_DB.get(gene, {})
     variant_info = gene_db.get(rsid)
     if variant_info:
-        return variant_info.get("activity_score", 0.0)
+        return float(cast(Any, variant_info.get("activity_score", 0.0)))
     return None
 
 
@@ -369,7 +369,9 @@ def get_phenotype_prediction(
             matched = False
             for rsid, variant_info in gene_db.items():
                 if variant_info["allele"] == allele:
-                    total_score += variant_info.get("activity_score", 0.0)
+                    total_score += float(
+                        cast(Any, variant_info.get("activity_score", 0.0))
+                    )
                     matched_alleles_count += 1
                     matched = True
                     break

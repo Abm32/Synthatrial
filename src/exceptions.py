@@ -4,11 +4,13 @@ Custom Exception Classes for SynthaTrial
 Provides structured error handling with context and proper error messages.
 """
 
+from typing import Any, Dict, Optional
+
 
 class SynthaTrialError(Exception):
     """Base exception for all SynthaTrial errors."""
 
-    def __init__(self, message: str, context: dict = None):
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
         """
         Initialize exception with message and optional context.
 
@@ -18,7 +20,7 @@ class SynthaTrialError(Exception):
         """
         super().__init__(message)
         self.message = message
-        self.context = context or {}
+        self.context: Dict[str, Any] = context or {}
 
     def __str__(self) -> str:
         """Return formatted error message with context."""
@@ -57,7 +59,7 @@ class VCFProcessingError(SynthaTrialError):
             vcf_path: Path to VCF file (if applicable)
             line_number: Line number where error occurred (if applicable)
         """
-        context = {}
+        context: Dict[str, Any] = {}
         if vcf_path:
             context["vcf_path"] = vcf_path
         if line_number:
@@ -79,7 +81,7 @@ class VectorSearchError(SynthaTrialError):
             index_name: Pinecone index name (if applicable)
             query_vector_size: Size of query vector (if applicable)
         """
-        context = {}
+        context: Dict[str, Any] = {}
         if index_name:
             context["index_name"] = index_name
         if query_vector_size:
@@ -106,7 +108,7 @@ class LLMError(SynthaTrialError):
             retry_count: Number of retries attempted (if applicable)
             status_code: HTTP status code (if applicable)
         """
-        context = {}
+        context: Dict[str, Any] = {}
         if model:
             context["model"] = model
         if retry_count is not None:
@@ -127,7 +129,7 @@ class ConfigurationError(SynthaTrialError):
             message: Error message
             missing_keys: List of missing configuration keys (if applicable)
         """
-        context = {}
+        context: Dict[str, Any] = {}
         if missing_keys:
             context["missing_keys"] = missing_keys
         super().__init__(message, context=context)
@@ -145,7 +147,7 @@ class ChEMBLProcessingError(SynthaTrialError):
             db_path: Path to ChEMBL database (if applicable)
             molregno: ChEMBL molecule registration number (if applicable)
         """
-        context = {}
+        context: Dict[str, Any] = {}
         if db_path:
             context["db_path"] = db_path
         if molregno:

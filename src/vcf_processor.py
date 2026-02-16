@@ -9,7 +9,7 @@ import gzip
 import logging
 import os
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 from .allele_caller import _genotype_to_alleles, call_gene_from_variants
 from .exceptions import VCFProcessingError
@@ -251,7 +251,10 @@ def extract_cyp_variants(
     variants = []
 
     # Open VCF file (handle gzip)
-    open_func = gzip.open if vcf_path.endswith(".gz") else open
+    open_func = cast(
+        Callable[..., Any],
+        gzip.open if vcf_path.endswith(".gz") else open,
+    )
     mode = "rt" if vcf_path.endswith(".gz") else "r"
 
     try:
@@ -408,7 +411,7 @@ def infer_metabolizer_status(
                         is_variant = True
 
             if is_variant:
-                found_alleles.append(allele)
+                found_alleles.append(str(allele))
                 logger.debug(
                     f"Found Critical Variant: {rsid} ({allele}) - {variant_info['impact']} - {variant_info['name']}"
                 )
@@ -476,7 +479,7 @@ def infer_metabolizer_status_with_alleles(
                 if len(alleles) == 2 and (alleles[0] != "0" or alleles[1] != "0"):
                     is_variant = True
             if is_variant:
-                found_alleles.append(allele)
+                found_alleles.append(str(allele))
 
     result["phenotype"] = get_phenotype_prediction(gene, found_alleles, copy_number)
     result["alleles"] = found_alleles
@@ -522,7 +525,7 @@ def _chrom_key_for_gene(gene: str) -> Optional[str]:
     loc = CYP_GENE_LOCATIONS.get(gene)
     if not loc:
         return None
-    c = loc["chrom"].upper()
+    c = str(loc["chrom"]).upper()
     if c == "X" or c == "Y":
         return f"chr{c}"
     try:
@@ -746,7 +749,7 @@ def generate_patient_profile_from_vcf(
 
     # Default values
     if age is None:
-        age = random.randint(25, 75)
+        age = random.randint(25, 75)  # nosec B311 - synthetic demo only
     if conditions is None:
         conditions = []
     if lifestyle is None:
@@ -793,7 +796,10 @@ def get_sample_ids_from_vcf(vcf_path: str, limit: Optional[int] = 10) -> List[st
     """
     Get list of sample IDs from VCF file header.
     """
-    open_func = gzip.open if vcf_path.endswith(".gz") else open
+    open_func = cast(
+        Callable[..., Any],
+        gzip.open if vcf_path.endswith(".gz") else open,
+    )
     mode = "rt" if vcf_path.endswith(".gz") else "r"
 
     try:
@@ -802,7 +808,7 @@ def get_sample_ids_from_vcf(vcf_path: str, limit: Optional[int] = 10) -> List[st
                 if line.startswith("#CHROM"):
                     header_fields = line.strip().split("\t")
                     if len(header_fields) > 9:
-                        samples = header_fields[9:]
+                        samples: List[str] = header_fields[9:]
                         if limit:
                             return samples[:limit]
                         return samples

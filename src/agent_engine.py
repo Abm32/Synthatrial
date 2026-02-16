@@ -212,7 +212,7 @@ def run_simulation(
         response = _invoke_llm_with_retry(chain, inputs)
         result = response.content if hasattr(response, "content") else str(response)
         logger.info("Simulation completed successfully")
-        return result
+        return str(result)
     except Exception as e:
         logger.error(f"LLM simulation failed: {e}", exc_info=True)
         raise LLMError(

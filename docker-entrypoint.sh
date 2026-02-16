@@ -481,7 +481,7 @@ case "$1" in
         ;;
 
     *)
-        echo "🚀 Custom command: $@"
+        echo "🚀 Custom command: $*"
         exec "$@"
         ;;
 esac

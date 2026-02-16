@@ -93,8 +93,8 @@ def extract_drug_molecules(
                         "inchi_key": inchi_key,
                     }
                 )
-        except Exception:
-            continue  # Skip invalid SMILES
+        except Exception:  # nosec B112 - skip invalid SMILES
+            continue
 
     return drugs
 

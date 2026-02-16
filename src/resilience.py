@@ -38,7 +38,7 @@ class CircuitBreaker:
         self.name = name
 
         self.failure_count = 0
-        self.last_failure_time = 0
+        self.last_failure_time: float = 0.0
         self.state = "CLOSED"  # CLOSED, OPEN, HALF-OPEN
 
     def call(self, func: Callable, *args, **kwargs) -> Any:

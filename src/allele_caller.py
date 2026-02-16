@@ -16,11 +16,13 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import pandas as pd
+
 # Default base for PGx data (repo-relative)
 DEFAULT_PGX_DIR = Path(__file__).resolve().parent.parent / "data" / "pgx"
 
 
-def load_pharmvar_alleles(gene: str, base_dir: Optional[Path] = None) -> "pd.DataFrame":
+def load_pharmvar_alleles(gene: str, base_dir: Optional[Path] = None) -> pd.DataFrame:
     """
     Load PharmVar-style allele definition TSV for a gene.
     Example: data/pgx/pharmvar/cyp2c19_alleles.tsv
@@ -47,10 +49,8 @@ def load_cpic_translation_for_gene(
     return load_cpic_translation(path)
 
 
-def load_pharmvar_table(path: str | Path) -> "pd.DataFrame":
+def load_pharmvar_table(path: str | Path) -> pd.DataFrame:
     """Load PharmVar-style allele table (TSV: allele, rsid, alt, function)."""
-    import pandas as pd
-
     p = Path(path)
     if not p.is_file():
         raise FileNotFoundError(f"PharmVar table not found: {path}")
@@ -94,7 +94,7 @@ def _genotype_to_alleles(ref: str, alt: str, gt: str) -> List[str]:
 
 def call_star_alleles(
     variants: Dict[str, Tuple[str, str, str]],
-    allele_table: "pd.DataFrame",
+    allele_table: pd.DataFrame,
 ) -> Dict[str, int]:
     """
     Determine star-allele copy counts from sample genotypes.
@@ -104,8 +104,6 @@ def call_star_alleles(
 
     Returns dict allele -> count (0, 1, or 2). *1 is implied when no variant detected.
     """
-    import pandas as pd
-
     allele_counts: Dict[str, int] = {}
     for _, row in allele_table.iterrows():
         allele = str(row.get("allele", "")).strip()
@@ -124,7 +122,7 @@ def call_star_alleles(
 
 
 def call_star_alleles_simple(
-    variant_dict: Dict[str, str], allele_table: "pd.DataFrame"
+    variant_dict: Dict[str, str], allele_table: pd.DataFrame
 ) -> List[str]:
     """
     Given patient variants (rsid -> alt), return detected star alleles.
@@ -213,7 +211,8 @@ def cpic_display_to_normalized(display: str) -> str:
     if "poor" in d:
         return "poor_metabolizer"
     if "rapid" in d and "ultra" not in d:
-        return "extensive_metabolizer"  # Rapid = increased; treat as extensive for pipeline
+        # Rapid = increased; treat as extensive for pipeline
+        return "extensive_metabolizer"
     if "ultra" in d or "ultrarapid" in d:
         return "ultra_rapid_metabolizer"
     return "unknown"
@@ -238,7 +237,8 @@ def call_gene_from_variants(
     """
     If curated data exists for the gene, run deterministic allele call and CPIC lookup.
     variants: rsid -> (ref, alt, gt).
-    Returns dict with diplotype, phenotype_display, phenotype_normalized, alleles_detected; or None if no data.
+    Returns dict with diplotype, phenotype_display, phenotype_normalized
+    and alleles_detected; or None if no data.
     """
     pv_path, cpic_path = get_pgx_paths(gene, base_dir)
     if not pv_path or not cpic_path:

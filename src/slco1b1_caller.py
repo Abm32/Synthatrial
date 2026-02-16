@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-
 DEFAULT_PGX_DIR = Path(__file__).resolve().parent.parent / "data" / "pgx"
 
 
