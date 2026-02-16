@@ -332,6 +332,9 @@ jobs:
         run: |
           echo "📦 Generating dependency analysis..."
 
+          # Ensure security reports directory exists
+          mkdir -p ${{ env.SECURITY_REPORT_DIR }}
+
           # Generate dependency tree
           pipdeptree --json > ${{ env.SECURITY_REPORT_DIR }}/dependency-tree.json
           pipdeptree > ${{ env.SECURITY_REPORT_DIR }}/dependency-tree.txt
