@@ -257,7 +257,7 @@ jobs:
           "
 
       - name: Upload release security report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-security-report
           path: release-security-report.json
@@ -395,7 +395,7 @@ jobs:
           echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.validate-release.outputs.version }}-dev-enhanced" >> release-report.md
 
       - name: Upload release report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-report
           path: release-report.md

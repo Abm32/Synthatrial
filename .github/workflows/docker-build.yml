@@ -70,7 +70,7 @@ jobs:
           safety check
 
       - name: Upload security reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: security-reports
@@ -140,7 +140,7 @@ jobs:
             -k "property" || true
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-${{ matrix.python-version }}-${{ matrix.test-type }}
@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload security scan results
         if: matrix.target == 'prod'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: container-security-scan
           path: trivy-report.json
@@ -499,7 +499,7 @@ jobs:
 
       - name: Upload deployment reports
         if: ${{ matrix.condition }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-reports-${{ matrix.environment }}
           path: |
@@ -524,7 +524,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Generate build report
         run: |
@@ -556,7 +556,7 @@ jobs:
           echo "- Platforms: ${{ env.PLATFORMS }}" >> build-report.md
 
       - name: Upload build report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-report
           path: build-report.md
