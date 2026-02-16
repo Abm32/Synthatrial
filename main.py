@@ -18,7 +18,7 @@ from src.config import config
 from src.exceptions import ConfigurationError
 from src.input_processor import get_drug_fingerprint
 from src.logging_config import setup_logging
-from src.slco1b1_caller import interpret_slco1b1_from_vcf
+from src.slco1b1_caller import interpret_slco1b1, interpret_slco1b1_from_vcf
 from src.variant_db import get_phenotype_prediction
 from src.vcf_processor import (
     discover_vcf_paths,
@@ -76,6 +76,27 @@ def run_benchmark(json_path: str) -> None:
             (row.get("expected_phenotype") or "").strip().lower().replace(" ", "_")
         )
         variants_raw = row.get("variants") or {}
+
+        # Statin benchmark (statin_examples.json): drug + genotype → expected recommendation
+        if "drug" in row and "genotype" in row and "expected" in row:
+            slco_result = interpret_slco1b1(
+                row["genotype"].strip().upper(), row["drug"]
+            )
+            if slco_result:
+                predicted = slco_result["recommendation"]
+                match = predicted == row["expected"]
+                results.append(
+                    {
+                        "gene": "SLCO1B1",
+                        "alleles": slco_result["genotype"],
+                        "expected": row["expected"],
+                        "predicted": predicted,
+                        "match": match,
+                        "drug_name": row["drug"],
+                        "description": "",
+                    }
+                )
+                continue
 
         # SLCO1B1: rs4149056 with [ref, alt, gt] or ref/alt/gt dict; expected = phenotype text
         slco_var_map = None

@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 from .allele_caller import _genotype_to_alleles, call_gene_from_variants
 from .exceptions import VCFProcessingError
 from .pgx_triggers import DRUG_GENE_TRIGGERS
-from .slco1b1_caller import interpret_slco1b1_from_vcf
+from .slco1b1_caller import interpret_slco1b1, interpret_slco1b1_from_vcf
 from .variant_db import (
     VARIANT_DB,
     get_allele_interpretation,
@@ -725,8 +725,10 @@ def generate_patient_profile_from_vcf(
         except Exception as e:
             logger.debug(f"Warfarin interpretation skipped: {e}")
 
-    # SLCO1B1 Statin PGx: only when drug triggers SLCO1B1 (CPIC-style)
-    if "SLCO1B1" in triggered_genes:
+    # --------------------------------------------
+    # CPIC-grade Statin PGx: SLCO1B1
+    # --------------------------------------------
+    if "SLCO1B1" in triggered_genes and drug_name:
         slco_var_map: Dict[str, Tuple[str, str, str]] = {}
         if gene_variants.get("SLCO1B1"):
             slco_var_map.update(
@@ -734,10 +736,15 @@ def generate_patient_profile_from_vcf(
             )
         if slco_var_map and "rs4149056" in slco_var_map:
             try:
-                slco_result = interpret_slco1b1_from_vcf(slco_var_map)
+                ref, alt, gt = slco_var_map["rs4149056"]
+                alleles = _genotype_to_alleles(ref, alt, gt)
+                genotype = "".join(sorted(alleles))
+                slco_result = interpret_slco1b1(genotype, drug_name)
                 if slco_result:
                     genetics_parts.append(
-                        f"Statin PGx: SLCO1B1 {slco_result['genotype']} → {slco_result['phenotype']}"
+                        f"Statin PGx (CPIC): SLCO1B1 {genotype} → "
+                        f"{slco_result['phenotype']} ({slco_result['risk']}) | "
+                        f"{slco_result['recommendation']}"
                     )
             except Exception as e:
                 logger.debug(f"SLCO1B1 interpretation skipped: {e}")
