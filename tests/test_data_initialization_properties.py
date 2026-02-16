@@ -180,7 +180,7 @@ class TestDataInitializationProperties(unittest.TestCase):
             self.assertIn(chromosome, initializer.VCF_URLS)
             url = initializer.VCF_URLS[chromosome]
             self.assertTrue(url.startswith("https://"))
-            self.assertIn("1000Genomes", url)
+            self.assertIn("1000genomes", url.lower())
             self.assertIn(chromosome, url)
 
         # Property: Expected file sizes should be valid ranges

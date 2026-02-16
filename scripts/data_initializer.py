@@ -459,6 +459,11 @@ class DataInitializer:
             print(f"❌ ChEMBL setup error: {e}")
             return False
 
+    def validate_data_integrity(self) -> bool:
+        """Validate overall data integrity (for integration tests)."""
+        status = self.check_data_completeness()
+        return status.valid_files == status.total_files and status.total_files > 0
+
     def validate_file_integrity(self, file_path: str) -> ValidationResult:
         """
         Validate file integrity using size checks and format validation.

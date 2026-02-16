@@ -117,8 +117,8 @@ def image_tags(draw):
 
 
 @composite
-def test_types_strategy(draw):
-    """Generate valid test type combinations"""
+def types_strategy(draw):
+    """Generate valid test type combinations (not a test - used by @given)."""
     available_types = ["unit", "integration", "property", "security", "performance"]
     size = draw(st.integers(min_value=1, max_value=len(available_types)))
     return draw(
@@ -263,7 +263,7 @@ class TestCIPipelineAutomation:
             # We can see from the logs that the build command was executed correctly
             # Focus on the essential properties rather than command parsing
 
-    @given(test_types=test_types_strategy())
+    @given(test_types=types_strategy())
     @settings(
         max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow]
     )

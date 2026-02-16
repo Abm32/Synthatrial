@@ -156,8 +156,8 @@ class TestVCFDownloadProperties(unittest.TestCase):
         self.assertIsInstance(status.missing_files, list)
         self.assertIsInstance(status.corrupted_files, list)
 
-        # Property: Total files should be consistent (2 VCF + 1 ChEMBL = 3)
-        self.assertEqual(status.total_files, 3)
+        # Property: Total files should be at least 3 (2 VCF + 1 ChEMBL); may be more if more chromosomes are configured
+        self.assertGreaterEqual(status.total_files, 3)
 
         # Property: Valid files should never exceed total files
         self.assertLessEqual(status.valid_files, status.total_files)

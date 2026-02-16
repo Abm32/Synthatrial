@@ -53,15 +53,16 @@ class TestGitHubActionsIntegration:
             workflow_path = project_root / workflow_file
             assert workflow_path.exists(), f"Workflow file {workflow_file} should exist"
 
-            # Validate YAML syntax
+            # Validate YAML syntax (PyYAML parses unquoted "on" as boolean True)
             try:
                 with open(workflow_path) as f:
                     workflow_data = yaml.safe_load(f)
                 assert (
                     "name" in workflow_data
                 ), f"Workflow {workflow_file} should have a name"
+                triggers = workflow_data.get("on") or workflow_data.get(True)
                 assert (
-                    "on" in workflow_data
+                    triggers is not None
                 ), f"Workflow {workflow_file} should have triggers"
                 assert (
                     "jobs" in workflow_data
@@ -159,8 +160,8 @@ class TestGitHubActionsIntegration:
         with open(workflow_path) as f:
             workflow_data = yaml.safe_load(f)
 
-        # Verify PR-specific triggers
-        triggers = workflow_data.get("on", {})
+        # Verify PR-specific triggers (PyYAML parses unquoted "on" as True)
+        triggers = workflow_data.get("on") or workflow_data.get(True) or {}
 
         # Should trigger on pull requests
         pr_triggers = ["pull_request", "pull_request_target"]
@@ -188,8 +189,8 @@ class TestGitHubActionsIntegration:
         with open(workflow_path) as f:
             workflow_data = yaml.safe_load(f)
 
-        # Verify release triggers
-        triggers = workflow_data.get("on", {})
+        # Verify release triggers (PyYAML parses unquoted "on" as True)
+        triggers = workflow_data.get("on") or workflow_data.get(True) or {}
 
         # Should trigger on tags or releases
         release_triggers = ["push", "release", "workflow_dispatch"]

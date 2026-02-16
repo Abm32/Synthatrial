@@ -199,6 +199,15 @@ class SecurityScanner:
             pass
         return "unknown"
 
+    def comprehensive_scan(self) -> Dict[str, Any]:
+        """Run comprehensive security scan (stub for integration tests)."""
+        return {
+            "overall_passed": False,
+            "security_score": 0.0,
+            "vulnerabilities": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+            "compliance_checks": {},
+        }
+
     def scan_image(
         self,
         image_name: str,

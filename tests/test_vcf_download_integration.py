@@ -97,7 +97,7 @@ class TestVCFDownloadIntegration(unittest.TestCase):
         for chromosome, vcf_info in downloader.list_available_chromosomes().items():
             # Check URL format
             self.assertTrue(vcf_info.url.startswith("https://"))
-            self.assertIn("1000Genomes", vcf_info.url)
+            self.assertIn("1000genomes", vcf_info.url.lower())
             self.assertIn(chromosome, vcf_info.url)
 
             # Check expected size range

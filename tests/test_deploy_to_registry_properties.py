@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from hypothesis import assume, example, given, settings
+from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import (
     Bundle,
@@ -206,7 +206,11 @@ class TestDeploymentAutomationProperties:
         tags=st.lists(image_tags(), min_size=1, max_size=3, unique=True),
         platforms=platform_lists(),
     )
-    @settings(max_examples=30, deadline=10000)
+    @settings(
+        max_examples=30,
+        deadline=10000,
+        suppress_health_check=[HealthCheck.filter_too_much],
+    )
     def test_deployment_config_validation_property(
         self, environment, images, tags, platforms
     ):

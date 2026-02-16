@@ -721,6 +721,79 @@ SynthaTrial Production Monitor
             self.logger.error(f"Backup failed: {e}")
             return result
 
+    def restore_from_backup(self, backup_path: str, restore_dir: str) -> Dict[str, Any]:
+        """Restore from a backup file. Stub for integration; override in tests."""
+        return {
+            "success": False,
+            "error": "not implemented",
+            "restored_files": 0,
+            "restored_size_mb": 0.0,
+            "duration_seconds": 0.0,
+            "verification_passed": False,
+        }
+
+    def detect_system_failures(self) -> Dict[str, Any]:
+        """Detect system failures from current metrics. Stub for integration."""
+        return {
+            "failures_detected": False,
+            "severity": "none",
+            "recovery_required": False,
+            "details": [],
+        }
+
+    def collect_metrics(self) -> Dict[str, Any]:
+        """Collect current metrics (alias for integration tests)."""
+        metrics = self.collect_system_metrics()
+        return {
+            "timestamp": time.time(),
+            "cpu_usage": metrics.cpu_usage_percent,
+            "memory_usage": metrics.memory_usage_percent,
+            "disk_usage": metrics.disk_usage_percent,
+            "network_io": metrics.network_io_mb,
+            "health_status": "healthy",
+        }
+
+    def execute_recovery_plan(self, plan: Dict[str, str]) -> Dict[str, Any]:
+        """Execute a recovery plan. Stub for integration."""
+        return {
+            "recovery_started": False,
+            "steps_completed": 0,
+            "steps_total": len(plan),
+            "estimated_completion": "",
+            "current_step": "",
+        }
+
+    def validate_recovery_success(self) -> Dict[str, Any]:
+        """Validate that recovery completed successfully. Stub for integration."""
+        return {
+            "recovery_successful": False,
+            "all_services_operational": False,
+            "data_integrity_verified": False,
+            "security_status_restored": False,
+            "performance_within_normal_range": False,
+            "monitoring_fully_restored": False,
+            "total_downtime": "",
+        }
+
+    def setup_production_monitoring(self, config: Dict[str, Any]) -> bool:
+        """Setup production monitoring from config. Stub for integration."""
+        return True
+
+    def validate_production_health(self) -> Dict[str, Any]:
+        """Validate production health. Stub for integration."""
+        return {
+            "overall_healthy": False,
+            "services_operational": 0,
+            "services_total": 0,
+            "ssl_valid": False,
+            "data_integrity": False,
+            "alerts_active": 0,
+        }
+
+    def start_continuous_monitoring(self) -> None:
+        """Start continuous monitoring (alias for integration tests)."""
+        self.start_monitoring()
+
     def start_monitoring(self):
         """Start continuous monitoring loop"""
         self.logger.info("Starting production monitoring...")

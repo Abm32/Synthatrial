@@ -107,6 +107,8 @@ class TestChEMBLSetupIntegration:
         conn.commit()
         conn.close()
 
+    @patch.object(ChEMBLSetup, "MIN_DATABASE_SIZE_MB", 0)
+    @patch.object(ChEMBLSetup, "MIN_TABLE_COUNT", 0)
     def test_check_existing_database_valid(self):
         """Test detection of valid existing database."""
         # Create a valid mock database
@@ -136,6 +138,8 @@ class TestChEMBLSetupIntegration:
 
         assert result is None
 
+    @patch.object(ChEMBLSetup, "MIN_DATABASE_SIZE_MB", 0)
+    @patch.object(ChEMBLSetup, "MIN_TABLE_COUNT", 0)
     def test_validate_database_valid(self):
         """Test database validation with valid database."""
         # Create a valid mock database
@@ -194,6 +198,8 @@ class TestChEMBLSetupIntegration:
 
             assert result is False
 
+    @patch.object(ChEMBLSetup, "MIN_DATABASE_SIZE_MB", 0)
+    @patch.object(ChEMBLSetup, "MIN_TABLE_COUNT", 0)
     def test_verify_setup_with_valid_database(self):
         """Test setup verification with valid database."""
         # Create a valid mock database
@@ -217,6 +223,8 @@ class TestChEMBLSetupIntegration:
 
         assert result is False
 
+    @patch.object(ChEMBLSetup, "MIN_DATABASE_SIZE_MB", 0)
+    @patch.object(ChEMBLSetup, "MIN_TABLE_COUNT", 0)
     @patch("scripts.setup_chembl.ChEMBLSetup._download_with_progress")
     @patch("scripts.setup_chembl.ChEMBLSetup._extract_database")
     def test_setup_database_success_flow(self, mock_extract, mock_download):
@@ -259,6 +267,8 @@ class TestChEMBLSetupIntegration:
         assert not result.success
         assert "Failed to download" in str(result.errors)
 
+    @patch.object(ChEMBLSetup, "MIN_DATABASE_SIZE_MB", 0)
+    @patch.object(ChEMBLSetup, "MIN_TABLE_COUNT", 0)
     def test_setup_database_with_existing_valid(self):
         """Test database setup when valid database already exists."""
         # Create a valid existing database

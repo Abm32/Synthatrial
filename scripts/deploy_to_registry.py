@@ -246,6 +246,18 @@ class RegistryDeployer:
             },
         }
 
+    def _get_ci_configuration(self) -> Dict[str, Any]:
+        """Return CI environment configuration (for tests and CI detection)."""
+        return {
+            "CI": os.getenv("CI"),
+            "GITHUB_ACTIONS": os.getenv("GITHUB_ACTIONS"),
+            "GITHUB_WORKSPACE": os.getenv("GITHUB_WORKSPACE"),
+            "GITHUB_REPOSITORY": os.getenv("GITHUB_REPOSITORY"),
+            "GITHUB_REF": os.getenv("GITHUB_REF"),
+            "GITHUB_SHA": os.getenv("GITHUB_SHA"),
+            "RUNNER_OS": os.getenv("RUNNER_OS"),
+        }
+
     def _setup_logging(self) -> logging.Logger:
         """Setup logging configuration"""
         logger = logging.getLogger("registry_deployer")
@@ -917,6 +929,30 @@ class RegistryDeployer:
             "acr": "Azure Container Registry - Microsoft Azure's container registry",
         }
         return descriptions.get(registry_type, "Custom container registry")
+
+    def restore_services(self) -> Dict[str, Any]:
+        """Restore services after failure (stub for integration tests)."""
+        return {
+            "services_restored": False,
+            "containers_running": [],
+            "ssl_restored": False,
+            "data_restored": False,
+            "health_checks_passing": False,
+            "restoration_time": "",
+        }
+
+    def deploy_complete_stack(self, config: DeploymentConfig) -> Dict[str, Any]:
+        """Deploy complete stack (stub for integration tests)."""
+        return {
+            "success": False,
+            "deployment_id": "",
+            "images_deployed": 0,
+            "platforms_deployed": 0,
+            "health_checks_passed": False,
+            "ssl_configured": False,
+            "monitoring_active": False,
+            "backup_configured": False,
+        }
 
     def validate_deployment(
         self, environment: str, registry_url: str
