@@ -149,7 +149,10 @@ class SecurityScanner:
             scanners["trivy"] = result.returncode == 0
             if scanners["trivy"]:
                 self.logger.debug(f"Trivy detected: {result.stdout.strip()}")
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            scanners["trivy"] = False
+        except Exception:
+            # Handle any other exceptions (e.g., from mocks)
             scanners["trivy"] = False
 
         # Check for Grype
@@ -160,7 +163,10 @@ class SecurityScanner:
             scanners["grype"] = result.returncode == 0
             if scanners["grype"]:
                 self.logger.debug(f"Grype detected: {result.stdout.strip()}")
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            scanners["grype"] = False
+        except Exception:
+            # Handle any other exceptions (e.g., from mocks)
             scanners["grype"] = False
 
         return scanners

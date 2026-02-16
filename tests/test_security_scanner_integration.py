@@ -45,8 +45,15 @@ class TestSecurityScannerIntegration:
         """Test scanner initialization when no scanning tools are available"""
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch("subprocess.run") as mock_run:
-                # Mock that no scanners are available
-                mock_run.return_value.returncode = 1
+                # Mock that no scanners are available - return non-zero returncode
+                def mock_subprocess(*args, **kwargs):
+                    result = Mock()
+                    result.returncode = 1
+                    result.stdout = ""
+                    result.stderr = ""
+                    return result
+
+                mock_run.side_effect = mock_subprocess
 
                 with pytest.raises(
                     RuntimeError, match="No supported vulnerability scanners found"
@@ -83,14 +90,23 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
 
                 def mock_subprocess(*args, **kwargs):
-                    if "grype" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Check if this is a grype version check
+                    if len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "grype 0.65.0"
                         return result
-                    else:
-                        result = Mock()
+                    # Check if this is a trivy version check - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    else:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
@@ -107,14 +123,21 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
                 # Mock scanner detection
                 def mock_subprocess(*args, **kwargs):
-                    if "--version" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Version check for trivy
+                    if len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "trivy version 0.45.0"
                         return result
-                    elif "trivy" in args[0] and "image" in args[0]:
-                        # Mock Trivy scan output
-                        result = Mock()
+                    # Version check for grype - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    # Trivy scan command
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "image" in cmd:
                         result.returncode = 0
                         result.stdout = json.dumps(
                             {
@@ -140,8 +163,9 @@ class TestSecurityScannerIntegration:
                         )
                         return result
                     else:
-                        result = Mock()
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
@@ -163,14 +187,21 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
                 # Mock scanner detection
                 def mock_subprocess(*args, **kwargs):
-                    if "--version" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Version check for grype
+                    if len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "grype 0.65.0"
                         return result
-                    elif "grype" in args[0]:
-                        # Mock Grype scan output
-                        result = Mock()
+                    # Version check for trivy - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    # Grype scan command
+                    elif len(cmd) >= 2 and cmd[0] == "grype":
                         result.returncode = 0
                         result.stdout = json.dumps(
                             {
@@ -194,8 +225,9 @@ class TestSecurityScannerIntegration:
                         )
                         return result
                     else:
-                        result = Mock()
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
@@ -217,20 +249,29 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
                 # Mock scanner detection success but scan failure
                 def mock_subprocess(*args, **kwargs):
-                    if "--version" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Version check for trivy
+                    if len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "trivy version 0.45.0"
                         return result
-                    elif "trivy" in args[0] and "image" in args[0]:
-                        # Mock scan failure
-                        result = Mock()
+                    # Version check for grype - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    # Trivy scan command - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "image" in cmd:
                         result.returncode = 1
                         result.stderr = "Image not found"
+                        result.stdout = ""
                         return result
                     else:
-                        result = Mock()
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
@@ -250,19 +291,28 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
                 # Mock successful scan
                 def mock_subprocess(*args, **kwargs):
-                    if "--version" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Version check for trivy
+                    if len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "trivy version 0.45.0"
                         return result
-                    elif "trivy" in args[0] and "image" in args[0]:
-                        result = Mock()
+                    # Version check for grype - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    # Trivy scan command
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "image" in cmd:
                         result.returncode = 0
                         result.stdout = json.dumps({"Results": []})
                         return result
                     else:
-                        result = Mock()
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
@@ -289,13 +339,21 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
                 # Mock successful scan with vulnerabilities
                 def mock_subprocess(*args, **kwargs):
-                    if "--version" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Version check for trivy
+                    if len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "trivy version 0.45.0"
                         return result
-                    elif "trivy" in args[0] and "image" in args[0]:
-                        result = Mock()
+                    # Version check for grype - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    # Trivy scan command
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "image" in cmd:
                         result.returncode = 0
                         result.stdout = json.dumps(
                             {
@@ -317,8 +375,9 @@ class TestSecurityScannerIntegration:
                         )
                         return result
                     else:
-                        result = Mock()
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
@@ -345,51 +404,61 @@ class TestSecurityScannerIntegration:
             with patch("subprocess.run") as mock_run:
                 # Mock scan with multiple severity levels
                 def mock_subprocess(*args, **kwargs):
-                    if "--version" in args[0]:
-                        result = Mock()
+                    cmd = args[0] if args else []
+                    result = Mock()
+                    # Version check for trivy
+                    if len(cmd) >= 2 and cmd[0] == "trivy" and "--version" in cmd:
                         result.returncode = 0
                         result.stdout = "trivy version 0.45.0"
                         return result
-                    elif "trivy" in args[0] and "image" in args[0]:
+                    # Version check for grype - should fail
+                    elif len(cmd) >= 2 and cmd[0] == "grype" and "--version" in cmd:
+                        result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
+                        return result
+                    # Trivy scan command
+                    elif len(cmd) >= 2 and cmd[0] == "trivy" and "image" in cmd:
                         # Check if severity filter is applied
-                        if "--severity" in args[0]:
-                            severity_arg_idx = args[0].index("--severity") + 1
-                            severity_filter = args[0][severity_arg_idx].upper()
-
-                            if "HIGH,CRITICAL" in severity_filter:
-                                # Return only high and critical vulnerabilities
-                                result = Mock()
-                                result.returncode = 0
-                                result.stdout = json.dumps(
-                                    {
-                                        "Results": [
-                                            {
-                                                "Vulnerabilities": [
-                                                    {
-                                                        "VulnerabilityID": "CVE-2023-HIGH",
-                                                        "Severity": "HIGH",
-                                                        "Title": "High severity vulnerability",
-                                                        "Description": "High severity test",
-                                                        "PkgName": "test-package",
-                                                        "InstalledVersion": "1.0.0",
-                                                    },
-                                                    {
-                                                        "VulnerabilityID": "CVE-2023-CRITICAL",
-                                                        "Severity": "CRITICAL",
-                                                        "Title": "Critical severity vulnerability",
-                                                        "Description": "Critical severity test",
-                                                        "PkgName": "test-package",
-                                                        "InstalledVersion": "1.0.0",
-                                                    },
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                )
-                                return result
+                        if "--severity" in cmd:
+                            severity_arg_idx = cmd.index("--severity") + 1
+                            if severity_arg_idx < len(cmd):
+                                severity_filter = cmd[severity_arg_idx].upper()
+                                if (
+                                    "HIGH" in severity_filter
+                                    and "CRITICAL" in severity_filter
+                                ):
+                                    # Return only high and critical vulnerabilities
+                                    result.returncode = 0
+                                    result.stdout = json.dumps(
+                                        {
+                                            "Results": [
+                                                {
+                                                    "Vulnerabilities": [
+                                                        {
+                                                            "VulnerabilityID": "CVE-2023-HIGH",
+                                                            "Severity": "HIGH",
+                                                            "Title": "High severity vulnerability",
+                                                            "Description": "High severity test",
+                                                            "PkgName": "test-package",
+                                                            "InstalledVersion": "1.0.0",
+                                                        },
+                                                        {
+                                                            "VulnerabilityID": "CVE-2023-CRITICAL",
+                                                            "Severity": "CRITICAL",
+                                                            "Title": "Critical severity vulnerability",
+                                                            "Description": "Critical severity test",
+                                                            "PkgName": "test-package",
+                                                            "InstalledVersion": "1.0.0",
+                                                        },
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    )
+                                    return result
 
                         # Default: return all severities
-                        result = Mock()
                         result.returncode = 0
                         result.stdout = json.dumps(
                             {
@@ -419,8 +488,9 @@ class TestSecurityScannerIntegration:
                         )
                         return result
                     else:
-                        result = Mock()
                         result.returncode = 1
+                        result.stdout = ""
+                        result.stderr = ""
                         return result
 
                 mock_run.side_effect = mock_subprocess
