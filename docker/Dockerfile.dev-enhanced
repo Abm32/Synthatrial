@@ -219,24 +219,23 @@ RUN mkdir -p \
     docker/ssl
 
 # Setup development environment configuration
-RUN conda run -n $CONDA_ENV_NAME python -c "
-import os
+RUN conda run -n $CONDA_ENV_NAME python - << 'PY'
 import json
 
 # Create development configuration
 dev_config = {
-    'hot_reload': True,
-    'debug_mode': True,
-    'auto_test': True,
-    'coverage_reporting': True,
-    'performance_profiling': True,
-    'security_scanning': True,
-    'code_quality_checks': True
+    "hot_reload": True,
+    "debug_mode": True,
+    "auto_test": True,
+    "coverage_reporting": True,
+    "performance_profiling": True,
+    "security_scanning": True,
+    "code_quality_checks": True,
 }
 
-with open('/app/.dev_config.json', 'w') as f:
+with open("/app/.dev_config.json", "w", encoding="utf-8") as f:
     json.dump(dev_config, f, indent=2)
-"
+PY
 
 # Setup Jupyter configuration for enhanced development
 RUN conda run -n $CONDA_ENV_NAME jupyter lab --generate-config \
