@@ -1,68 +1,39 @@
-version: "3.8"
-
 services:
-  synthatrial:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    container_name: synthatrial-app
+  backend:
+    build: .
+    container_name: synthatrial-backend
+    command: >
+      conda run -n synthatrial uvicorn api:app
+      --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
     ports:
-      - "8501:8501" # Streamlit web interface
-      - "8000:8000" # Alternative port for CLI access
-    environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
-      - PINECONE_INDEX=${PINECONE_INDEX:-drug-index}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - "8000:8000"
     volumes:
-      - ./data:/app/data:rw # Mount data directory for VCF files and ChEMBL database
-      - ./logs:/app/logs:rw # Mount logs directory
-      - ./.env:/app/.env:ro # Mount environment file (read-only)
+      - ./data:/app/data
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     networks:
       - synthatrial-network
 
-  # Optional: Development container with volume mounts for code changes
-  synthatrial-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: application
-    container_name: synthatrial-dev
-    ports:
-      - "8502:8501" # Different port for dev
+  frontend:
+    build: .
+    container_name: synthatrial-frontend
+    command: >
+      conda run -n synthatrial streamlit run app.py
+      --server.port=8501 --server.address=0.0.0.0
+    env_file:
+      - .env
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
-      - PINECONE_INDEX=${PINECONE_INDEX:-drug-index}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - API_URL=http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
     volumes:
-      - .:/app:rw # Mount entire project for development
-    command:
-      [
-        "conda",
-        "run",
-        "-n",
-        "synthatrial",
-        "streamlit",
-        "run",
-        "app.py",
-        "--server.port=8501",
-        "--server.address=0.0.0.0",
-        "--server.runOnSave=true",
-      ]
+      - ./data:/app/data
     restart: unless-stopped
     networks:
       - synthatrial-network
-    profiles:
-      - dev # Only start with --profile dev
 
 networks:
   synthatrial-network:

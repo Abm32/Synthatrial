@@ -11,6 +11,7 @@ SynthaTrial/
 ├── Procfile                  # Heroku deployment configuration
 ├── runtime.txt               # Python runtime specification
 ├── demo.html                 # Competition demo interface
+├── AWS_EC2_DEPLOYMENT.md     # Complete AWS EC2 deployment guide with VCF support
 ├── .dockerignore             # Docker ignore file
 ├── Dockerfile                # Multi-stage Docker build
 ├── docker-compose.yml        # Docker Compose configuration
@@ -91,6 +92,15 @@ SynthaTrial/
 │       └── ALL.chr10.*.vcf.gz  # Chromosome 10 (CYP2C19, CYP2C9)
 ├── docs/                    # Documentation (points to root README)
 │   └── README.md
+├── .kiro/                   # Kiro IDE configuration and project specs
+│   ├── hooks/              # Agent hooks for automated workflows
+│   ├── specs/              # Feature specifications and implementation plans
+│   │   ├── aws-ec2-deployment/    # AWS EC2 deployment spec
+│   │   └── docker-enhancements/   # Docker enhancements spec
+│   └── steering/           # Steering documentation (tech, product, structure)
+│       ├── tech.md         # Technology stack and development guidelines
+│       ├── product.md      # Product overview and functionality
+│       └── structure.md    # Project structure and conventions
 ├── docker/                  # Docker configuration files
 │   ├── Dockerfile.dev       # Development Dockerfile
 │   ├── Dockerfile.dev-enhanced # Enhanced development Dockerfile (NEW)
@@ -133,7 +143,7 @@ SynthaTrial/
 
 ### Entry Points
 
-- **`app.py`**: Minimalistic Streamlit web interface with clean styling, streamlined user experience, curated drug database, real-time system monitoring, and competition-ready features. Features a simplified 3-tab interface (Analysis, Platform, About) with collapsed sidebar for cleaner main interface
+- **`app.py`**: Minimalistic Streamlit web interface with 3D molecular visualization (py3Dmol + stmol), Lottie animations (DNA, loading, success), streamlined user experience with Inter font, curated drug database (7 drugs: Warfarin, Clopidogrel, Codeine, Ibuprofen, Metoprolol, Simvastatin, Irinotecan), batch processing capabilities, and competition-ready features. Features a 4-tab interface (Simulation Lab, Batch Processing, Analytics, About) with configurable API URL, real-time system status, multi-enzyme patient profiling (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1), and 3-stage pipeline visualization (Genetics → Similar Drugs → Predicted Response). Sidebar collapsed by default for cleaner main interface.
 - **`main.py`**: Command-line interface supporting both VCF and manual patient profiles. Supports single-chromosome (CYP2D6 only) and multi-chromosome (Big 3 enzymes) analysis with `--vcf-chr10` parameter for chromosome 10 data
 - **`api.py`**: FastAPI REST API wrapper providing health check, analysis, and demo endpoints for programmatic access and cloud deployment
 
@@ -170,6 +180,20 @@ SynthaTrial/
 - **`README.md`** (root): Single source of truth — setup, data, deployment, commands, architecture, troubleshooting, API (interactive docs at /docs when running).
 - **`docs/README.md`**: Points to root README.
 
+### Kiro IDE Configuration (`.kiro/`)
+
+- **`hooks/`**: Agent hooks for automated workflows
+  - Automated actions triggered by IDE events (file edits, commits, etc.)
+  - Custom workflows for development automation
+- **`specs/`**: Feature specifications and implementation plans
+  - **`aws-ec2-deployment/`**: AWS EC2 deployment specification with requirements, design, and tasks
+  - **`docker-enhancements/`**: Docker enhancements specification for SSL, data initialization, security, and CI/CD
+  - Each spec contains: requirements.md, design.md, tasks.md, and README.md
+- **`steering/`**: Steering documentation files
+  - **`tech.md`**: Technology stack, dependencies, commands, and development guidelines
+  - **`product.md`**: Product overview, functionality, use cases, and target users
+  - **`structure.md`**: Project structure, module responsibilities, and conventions
+
 ### Competition and Demo Files
 
 - **`demo.html`**: Professional competition demo interface with gradient design and real-time API integration
@@ -177,6 +201,7 @@ SynthaTrial/
 - **`vercel.json`**: Vercel serverless deployment configuration
 - **`Procfile`**: Heroku deployment configuration
 - **`runtime.txt`**: Python runtime specification for cloud platforms
+- **`AWS_EC2_DEPLOYMENT.md`**: Complete AWS EC2 deployment guide with Docker containerization and VCF file storage. Provides the most cost-effective production deployment strategy (₹0-₹750/month) using EC2 local storage instead of expensive managed services.
 - **`.env.example`**: Environment template with competition and cloud deployment settings
 
 ### Examples (`examples/`) (NEW)

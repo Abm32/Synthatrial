@@ -118,11 +118,14 @@ with st.sidebar:
 
     # API Configuration
     st.subheader("⚙️ Configuration")
+    # Default to Docker network name when deployed with docker-compose on EC2,
+    # fall back to localhost for local dev.
+    default_api_url = os.getenv("API_URL", "http://localhost:8000")
     api_url = st.text_input(
-        "API URL", value="http://localhost:8000", help="URL of the backend API"
+        "API URL", value=default_api_url, help="URL of the backend API"
     )
-    if "api_url" not in st.session_state:
-        st.session_state.api_url = api_url
+    # Keep the current value in session so the rest of the app can reuse it
+    st.session_state.api_url = api_url
 
     # Status
     try:

@@ -16,10 +16,10 @@ SynthaTrial is an **In Silico Pharmacogenomics Platform** (Version 0.2 Beta) tha
 - **Performance Benchmarking**: Built-in tools for measuring vector retrieval latency, LLM simulation time, and end-to-end workflows with detailed analytics
 - **Data Integrity Validation**: Comprehensive VCF file validation, corruption detection, and download verification with detailed reporting
 - **CPIC Compliance Testing**: Automated validation against Clinical Pharmacogenetics Implementation Consortium guidelines with accuracy metrics
-- **Modern Web Interface**: Minimalistic Streamlit UI with clean styling, streamlined user experience, curated drug database, real-time system monitoring, and competition-ready demo features
+- **Modern Web Interface**: Minimalistic Streamlit UI with 3D molecular visualization (py3Dmol + stmol), Lottie animations (DNA, loading, success), streamlined user experience with Inter font, curated drug database (7 drugs: Warfarin, Clopidogrel, Codeine, Ibuprofen, Metoprolol, Simvastatin, Irinotecan), 4-tab interface (Simulation Lab, Batch Processing, Analytics, About), batch processing capabilities, 3-stage pipeline visualization (Genetics → Similar Drugs → Predicted Response), and competition-ready demo features with configurable API URL
 - **RESTful API**: Production-ready FastAPI wrapper with health check and analysis endpoints for programmatic access and cloud deployment
 - **Interactive API Documentation**: Auto-generated Swagger UI and ReDoc for easy API exploration and testing
-- **Cloud Deployment Ready**: Optimized for deployment to Render, Vercel, Heroku, AWS, and other cloud platforms with comprehensive deployment guides and competition-ready configurations
+- **Cloud Deployment Ready**: Optimized for deployment to Render, Vercel, Heroku, AWS EC2, and other cloud platforms with comprehensive deployment guides and competition-ready configurations. AWS EC2 provides the most cost-effective production deployment at ₹0/month (free tier) or ₹400-₹750/month with full VCF support.
 - **Dual Interface Architecture**: Both web UI (Streamlit) and REST API (FastAPI) for flexible integration options
 - **Professional-Grade Containerization**: Complete Docker setup with multi-environment support (development, production, CI/CD), automated SSL certificate management, security scanning, and performance monitoring
 - **Enhanced Development Environment**: Jupyter notebook integration, hot reloading, code quality tools, automated testing within containerized environments, pre-commit hooks, and property-based testing
@@ -48,7 +48,7 @@ SynthaTrial is an **In Silico Pharmacogenomics Platform** (Version 0.2 Beta) tha
 - Risk assessment for adverse drug reactions across multiple metabolic pathways with comprehensive reporting
 - Research and development prototype with clinical-grade enzyme coverage and CPIC compliance
 - **API Integration**: Programmatic access for integration with EHR systems, clinical decision support tools, and research platforms
-- **Cloud-based Deployment**: Scalable API deployment for production use in healthcare and pharmaceutical applications with competition-ready configurations
+- **Cloud-based Deployment**: Scalable API deployment for production use in healthcare and pharmaceutical applications with competition-ready configurations on Render, Vercel, Heroku, and AWS EC2. AWS EC2 offers the most economical production deployment (₹0-₹750/month) with complete VCF support, significantly cheaper than managed services like ECS/Fargate.
 - **Competition and Demo Ready**: Professional demo interfaces and one-click deployment for competitions and presentations
 - **Third-party Integration**: RESTful API enables integration with mobile apps, web portals, and other healthcare IT systems
 - Performance benchmarking for pharmacogenomics platforms with detailed analytics and timing measurements
@@ -58,7 +58,7 @@ SynthaTrial is an **In Silico Pharmacogenomics Platform** (Version 0.2 Beta) tha
 - Data integrity validation for VCF files and genomic datasets with comprehensive error reporting
 - Platform validation and testing with comprehensive test suites and validation frameworks
 - **Professional containerized deployment** for development, testing, production, and CI/CD environments with comprehensive automation, security scanning, monitoring capabilities, SSL certificate management, data initialization, and enterprise-grade security features
-- **RESTful API deployment** with FastAPI for cloud platforms (Render, Vercel, Heroku, AWS) enabling programmatic access and third-party integrations
+- **RESTful API deployment** with FastAPI for cloud platforms (Render, Vercel, Heroku, AWS EC2) enabling programmatic access and third-party integrations
 - **Interactive API documentation** with Swagger UI and ReDoc for easy exploration, testing, and integration
 - **Dual deployment options** supporting both web UI (Streamlit) and REST API (FastAPI) for flexible use cases
 - **Enhanced development workflows** with Jupyter notebook integration, automated code quality checks, containerized testing environments, property-based testing, pre-commit hooks, comprehensive integration testing, and modern minimalistic UI with clean user experience
@@ -93,6 +93,6 @@ SynthaTrial is an **In Silico Pharmacogenomics Platform** (Version 0.2 Beta) tha
 - **Professional-grade containerization**: Multi-stage Docker builds with development, enhanced development, production, and CI/CD configurations, automated SSL management, security scanning, performance monitoring, and enterprise deployment features
 - **Enhanced development experience**: Jupyter notebook integration, automated code quality tools, hot reloading, comprehensive testing frameworks within containerized environments, pre-commit hooks, property-based testing, and integration test automation
 - **Enterprise deployment readiness**: Nginx reverse proxy with SSL/TLS, automated backup procedures, vulnerability scanning, multi-architecture support, automated certificate management, production monitoring, and disaster recovery automation
-- **Modern web interface**: Minimalistic UI with clean styling, streamlined user experience, curated drug database, real-time system monitoring, and competition-ready demo features
+- **Modern web interface**: Minimalistic UI with 3D molecular visualization (py3Dmol + stmol), Lottie animations (DNA, loading, success), 4-tab interface (Simulation Lab, Batch Processing, Analytics, About), curated drug database (7 drugs), multi-enzyme patient profiling (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1), 3-stage pipeline visualization, batch processing, streamlined user experience with Inter font, configurable API URL, and competition-ready demo features
 - **Data quality assurance**: Built-in VCF validation, corruption detection, automated data initialization, comprehensive error reporting, integrity validation workflows, and automated backup procedures
 - **Performance monitoring and alerting**: Detailed benchmarking tools for vector retrieval, LLM processing, end-to-end workflow analysis, containerized resource monitoring, automated testing performance tracking, real-time alerting, and comprehensive reporting

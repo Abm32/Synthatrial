@@ -7,7 +7,7 @@
 - **Pinecone** - Vector similarity search database
 - **Google Gemini** - LLM for pharmacogenomics analysis (default: gemini-2.5-flash, supports gemini-1.5-flash, gemini-2.5-pro, gemini-2.0-flash)
 - **LangChain** - LLM integration framework with enhanced RAG capabilities
-- **Streamlit** - Modern minimalistic web interface with clean styling and user-friendly UX
+- **Streamlit** - Modern minimalistic web interface with 3D molecular visualization, Lottie animations, and user-friendly UX
 - **SQLite** - ChEMBL database storage
 - **Docker** - Containerization for development and production deployment with multi-stage builds
 - **Multi-chromosome VCF processing** - Big 3 enzymes support (CYP2D6, CYP2C19, CYP2C9)
@@ -29,11 +29,19 @@ pinecone>=5.0.0
 psycopg2-binary>=2.9.0
 python-dotenv>=1.0.0
 streamlit>=1.28.0
-plotly>=5.0.0
+plotly>=5.18.0
+py3Dmol>=2.0.0
+stmol>=0.0.9
+streamlit-lottie>=0.0.5
+requests>=2.28.0
+tenacity>=8.2.0
+ipython_genutils>=0.2.0
 pytest>=7.0.0
 hypothesis>=6.0.0
 fastapi>=0.111.0
 uvicorn[standard]>=0.30.0
+psutil>=5.9.0
+docker>=6.0.0
 ```
 
 ### Development Dependencies
@@ -149,9 +157,42 @@ heroku create anukriti-ai-app
 heroku config:set GOOGLE_API_KEY=your_key
 git push heroku main
 
+# AWS EC2 deployment (production with VCF support - CHEAPEST OPTION)
+# See AWS_EC2_DEPLOYMENT.md for complete guide
+# Cost: ₹0/month (free tier t2.micro) or ₹400-₹750/month (t3.micro + storage)
+# 1. Launch EC2 instance (t2.micro free tier or t3.micro recommended)
+# 2. Install Docker
+# 3. Clone repository
+# 4. Download VCF files to data/genomes/ (stored on EC2 local disk)
+# 5. Build and run Docker container with volume mount: -v $(pwd)/data:/app/data
+# 6. Enable auto-restart: docker update --restart unless-stopped
+# Access: http://<EC2_PUBLIC_IP>:8501
+
 # Test deployed API
 curl https://anukriti-ai-competition.onrender.com/
 curl https://anukriti-ai-competition.onrender.com/demo
+```
+
+### Deployment Cost Comparison
+```
+Platform Comparison (Monthly Cost):
+┌─────────────────┬──────────────┬─────────────┬──────────────┬─────────────────┐
+│ Platform        │ Cost         │ VCF Support │ Setup Time   │ Best For        │
+├─────────────────┼──────────────┼─────────────┼──────────────┼─────────────────┤
+│ Render.com      │ Free-₹500    │ ❌ No       │ 5-10 min     │ Demos, API only │
+│ Vercel          │ Free-₹1000   │ ❌ No       │ 5-10 min     │ Serverless      │
+│ Heroku          │ ₹500-₹2000   │ ⚠️ Limited  │ 10-15 min    │ Simple apps     │
+│ AWS EC2 (FREE)  │ ₹0-₹150      │ ✅ Full     │ 30-45 min    │ Free tier ⭐    │
+│ AWS EC2 (PAID)  │ ₹400-₹750    │ ✅ Full     │ 30-45 min    │ Production ⭐   │
+│ AWS ECS/Fargate │ ₹1500-₹3000  │ ✅ Full     │ 2-3 hours    │ Enterprise      │
+└─────────────────┴──────────────┴─────────────┴──────────────┴─────────────────┘
+
+Cost Optimization Tips:
+- Use t2.micro (FREE for 12 months with AWS Free Tier)
+- Store VCF files on EC2 local disk (no S3 costs)
+- Use Reserved Instances for 40-60% savings (after free tier)
+- Stop instance when not needed (no compute charges)
+- Download only chr22 initially to save storage costs
 ```
 
 ### Setup Commands
@@ -195,18 +236,25 @@ python scripts/check_vcf_integrity.py data/genomes/chr22.vcf.gz
 
 ### Enhanced Streamlit UI Features
 ```bash
-# Modern minimalistic web interface
+# Modern minimalistic web interface with 3D visualization
 streamlit run app.py
 
 # Features include:
-# - Clean, user-friendly design with minimalistic styling
-# - Streamlined drug analysis workflow with curated database
-# - Real-time system health monitoring
-# - Multi-enzyme patient profiling (Big 3 CYPs)
-# - Competition-ready demo interface
-# - Performance metrics and analytics
+# - Clean, user-friendly design with minimalistic Inter font styling
+# - 3D molecular structure visualization with py3Dmol and stmol
+# - Lottie animations for enhanced user experience (DNA, loading, success)
+# - 4-tab interface: Simulation Lab, Batch Processing, Analytics, About
+# - Streamlined drug analysis workflow with curated database (7 drugs)
+# - Real-time system health monitoring with API status
+# - Multi-enzyme patient profiling (CYP2D6, CYP2C19, CYP2C9, UGT1A1, SLCO1B1)
+# - 3-stage pipeline visualization: Genetics → Similar Drugs → Predicted Response
+# - Batch processing capabilities for cohort analysis
+# - Competition-ready demo interface with professional styling
+# - Performance metrics and analytics dashboard
 # - Cloud deployment integration status
 # - Analysis history tracking and report downloads
+# - Configurable API URL for flexible deployment
+# - Collapsed sidebar by default for cleaner main interface
 ```
 
 # REST API (production deployment)
@@ -356,7 +404,8 @@ python scripts/deploy_to_registry.py --environment production  # Deploy to produ
 - **Modular design**: Separate processors for input, vector search, VCF, ChEMBL, and AI engine
 - **Dual interface architecture**: Streamlit web UI and FastAPI REST API for flexible deployment options
 - **RESTful API**: Production-ready FastAPI wrapper with health check and analysis endpoints
-- **Cloud deployment ready**: Optimized for Render, Vercel, Heroku, AWS, and other cloud platforms
+- **Cloud deployment ready**: Optimized for Render, Vercel, Heroku, AWS EC2, and other cloud platforms
+- **AWS EC2 deployment**: Complete production deployment with Docker and VCF files stored on EC2 local storage for cost-effective full-featured deployment. Most economical option at ₹0/month (free tier) or ₹400-₹750/month (paid tier) with full VCF support. Avoids expensive managed services like ECS/Fargate (₹1500-₹3000/month) and S3 storage costs by using EC2 local disk.
 - **Competition-ready deployment**: One-click deployment configurations for Render.com and Vercel with demo endpoints
 - **Interactive API documentation**: Auto-generated Swagger UI and ReDoc for API exploration
 - **Professional-grade containerization**: Multi-stage Docker builds with development, enhanced development, production, and CI/CD configurations
@@ -408,7 +457,9 @@ python scripts/deploy_to_registry.py --environment production  # Deploy to produ
 - **VCF Integrity**: Always verify VCF file integrity using `python scripts/check_vcf_integrity.py`
 - **Docker Development**: Use `make quick-start` for development, `make dev-enhanced` for enhanced development, `make run-prod` for production testing
 - **API Development**: Use `python api.py` for local API testing, `python test_api.py` for automated API testing
-- **Cloud Deployment**: Deploy FastAPI to Render, Vercel, Heroku, AWS Lambda, or other cloud platforms
+- **Cloud Deployment**: Deploy FastAPI to Render, Vercel, Heroku, AWS EC2, or other cloud platforms
+- **AWS EC2 Deployment**: Use `AWS_EC2_DEPLOYMENT.md` for complete production deployment with VCF support
+- **Cost Optimization**: Use t2.micro (free tier) or t3.micro (₹400-₹750/month) for cheapest deployment. Avoid ECS/Fargate (₹1500-₹3000/month) and S3 storage (₹200-₹400/month extra) by using EC2 local disk for VCF files.
 - **Competition Deployment**: See root README (Deployment section and render.yaml)
 - **Demo Interface**: Use `demo.html` for professional competition presentations
 - **API Documentation**: Use `/docs` endpoint for interactive Swagger UI, `/redoc` for alternative documentation
