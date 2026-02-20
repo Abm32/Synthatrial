@@ -1,85 +1,89 @@
+# ---------------------------
 # Git
+# ---------------------------
 .git
 .gitignore
 
-# Python
-__pycache__
+# ---------------------------
+# Python cache / build files
+# ---------------------------
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env
+*.so
+*.egg-info/
+dist/
+build/
+
+# ---------------------------
+# Virtual environments
+# ---------------------------
+env/
+venv/
+.venv/
 pip-log.txt
 pip-delete-this-directory.txt
-.tox
+.tox/
 .coverage
 .coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
+.cache/
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
 
-# Documentation build
-docs/_build/
+# ---------------------------
+# Jupyter
+# ---------------------------
+.ipynb_checkpoints/
 
-# PyCharm
+# ---------------------------
+# IDE files
+# ---------------------------
 .idea/
-
-# VSCode
 .vscode/
+.kiro/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# Environment variables
-.env.local
-.env.development
-.env.test
-.env.production
-
-# macOS
+# ---------------------------
+# OS files
+# ---------------------------
 .DS_Store
-
-# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# Linux
 *~
 
+# ---------------------------
+# Logs
+# ---------------------------
+logs/
+*.log
+
+# ---------------------------
+# Environment files
+# ---------------------------
+.env
+.env.*
+.python-version
+Pipfile.lock
+
+# ---------------------------
+# LARGE DATA FILES (CRITICAL)
+# These are mounted as volumes,
+# NOT copied into Docker image
+# ---------------------------
+data/genomes/
+data/chembl/
+*.vcf.gz
+*.tbi
+*.db
+*.tar.gz
+
+# ---------------------------
 # Temporary files
+# ---------------------------
 *.tmp
 *.temp
 *.swp
 *.swo
-
-# Logs
-logs/
-*.log
-
-# Large data files (will be mounted as volumes)
-data/genomes/*.vcf.gz
-data/chembl/*.tar.gz
-data/chembl/chembl_34_sqlite/
-
-# IDE files
-.kiro/
-*.tex
-*.pdf
-
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
