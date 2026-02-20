@@ -23,9 +23,10 @@ RUN conda create -n $CONDA_ENV_NAME python=3.10 -y
 # Activate conda environment for subsequent commands
 SHELL ["conda", "run", "-n", "synthatrial", "/bin/bash", "-c"]
 
-# Install RDKit and scientific packages via conda (required for molecular fingerprints)
-RUN conda install -n $CONDA_ENV_NAME -c conda-forge \
+# Install RDKit, htslib (tabix for region-indexed VCF), and scientific packages via conda
+RUN conda install -n $CONDA_ENV_NAME -c bioconda -c conda-forge \
     rdkit \
+    htslib \
     pandas \
     scipy \
     scikit-learn \

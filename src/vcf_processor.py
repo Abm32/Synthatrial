@@ -8,6 +8,7 @@ Focuses on CYP genes (CYP2D6 on chromosome 22, CYP2C19 on chr10, CYP3A4 on chr7)
 import gzip
 import logging
 import os
+import subprocess  # nosec B404 - tabix for region-indexed VCF; args from config/paths
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
@@ -316,6 +317,72 @@ def extract_cyp_variants(
         ) from e
 
 
+def extract_variants_with_tabix(vcf_path: str, gene: str) -> List[Dict]:
+    """
+    Extract variants using tabix region query instead of full file scan.
+    Requires .tbi index file. Falls back to full-file scan on tabix failure.
+    """
+    if gene not in CYP_GENE_LOCATIONS:
+        return []
+
+    gene_loc = CYP_GENE_LOCATIONS[gene]
+    chrom = gene_loc["chrom"]
+    start = gene_loc["start"]
+    end = gene_loc["end"]
+    region = f"{chrom}:{start}-{end}"
+
+    try:
+        # -h: include header so we can build variant["samples"] for sample_id lookup
+        result = subprocess.run(  # nosec B603 B607 - tabix fixed cmd; vcf_path/region from config
+            ["tabix", "-h", vcf_path, region],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        lines = result.stdout.strip().split("\n")
+        sample_names: Optional[List[str]] = None
+        variants: List[Dict] = []
+
+        for line in lines:
+            if not line:
+                continue
+            if line.startswith("#CHROM"):
+                parts = line.strip().split("\t")
+                if len(parts) > 9:
+                    sample_names = parts[9:]
+                continue
+            if line.startswith("#"):
+                continue
+
+            variant = parse_vcf_line(line)
+            if not variant:
+                continue
+            variant["gene"] = gene
+            variant["samples"] = {}
+            if sample_names and variant.get("genotypes"):
+                for i, name in enumerate(sample_names):
+                    if i < len(variant["genotypes"]):
+                        variant["samples"][name] = variant["genotypes"][i]
+            variants.append(variant)
+
+        if variants:
+            logger.info(
+                f"Tabix: found {len(variants)} variants in {gene} region (query {region})"
+            )
+        return variants
+
+    except (
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+    ) as e:
+        logger.warning(
+            f"Tabix region query failed ({e}), falling back to full-file scan for {gene}"
+        )
+        return extract_cyp_variants(vcf_path, gene, sample_limit=1)
+
+
 def infer_metabolizer_status(
     variants: List[Dict], sample_id: str, gene: str = "CYP2D6"
 ) -> str:
@@ -592,7 +659,7 @@ def generate_patient_profile_from_vcf(
         if not vcf_file:
             continue
         try:
-            gene_variants[gene] = extract_cyp_variants(vcf_file, gene, sample_limit=1)
+            gene_variants[gene] = extract_variants_with_tabix(vcf_file, gene)
             if gene_variants[gene]:
                 logger.info(
                     f"Extracted {len(gene_variants[gene])} {gene} variants from {chr_key}"
