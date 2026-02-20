@@ -78,9 +78,85 @@ Any `.vcf.gz` in `data/genomes/` whose filename contains the chromosome (e.g. `c
 Data is not in the image. Two options:
 
 1. **Volume mount:** Pre-download into `./data/genomes` and `./data/chembl` on the host; production Compose mounts `./data` → `/app/data`.
-2. **Download in container:** Start once, then e.g. `docker exec <container> python scripts/data_initializer.py --vcf chr22 chr10` (add `chr16` for Warfarin VKORC1 if needed). Use a **named volume** for `/app/data` so data persists.
+2. **Download in container:** Start once, then for example:
 
-Without any data, the app runs in manual profile mode with mock drug search. For Render: use `render.yaml` and set env vars (e.g. `GOOGLE_API_KEY`) in the dashboard.
+   ```bash
+   docker exec <container> python scripts/data_initializer.py --vcf chr22 chr10
+   ```
+
+   Add `chr16` for Warfarin VKORC1 if needed. Use a **named volume** for `/app/data` so data persists.
+
+Without any data, the app runs in manual profile mode with mock drug search.
+
+### Local Docker Compose
+
+Simple two-service setup (FastAPI backend + Streamlit frontend):
+
+```bash
+docker-compose up -d --build
+docker-compose ps
+```
+
+This starts:
+
+- `backend` on port `8000` (`http://localhost:8000/docs`)
+- `frontend` on port `8501` (`http://localhost:8501`)
+
+The frontend uses `API_URL=http://backend:8000` inside the Compose network.
+
+### AWS EC2 (recommended for production)
+
+For a full step-by-step guide (instance setup, VCF downloads, security hardening, and Docker Compose deployment on EC2), see `AWS_EC2_DEPLOYMENT.md`. At a high level on the EC2 instance:
+
+```bash
+git clone https://github.com/Abm32/Synthatrial.git
+cd Synthatrial
+cp .env.example .env  # or create .env with GOOGLE_API_KEY, etc.
+mkdir -p data/genomes
+# optional: download VCFs into data/genomes/
+docker-compose up -d --build
+```
+
+Expose ports `8000` and `8501` in the EC2 security group and access the app at:
+
+- `http://<EC2_PUBLIC_IP>:8501` (UI)
+- `http://<EC2_PUBLIC_IP>:8000/docs` (API docs)
+
+### Verifying data usage (not mock, ChEMBL, VCF)
+
+To confirm the deployment is **not** using mock data and is using ChEMBL-backed search and/or VCF genome data:
+
+1. **Backend data-status (single source of truth)**
+   Call the backend (from your machine or on the server):
+
+   ```bash
+   curl -s http://localhost:8000/data-status
+   # Or from outside: curl -s http://<EC2_PUBLIC_IP>:8000/data-status
+   ```
+
+   Example response:
+
+   ```json
+   {
+     "vector_db": "pinecone",
+     "vcf_chromosomes": ["chr22", "chr10", "chr16"],
+     "vcf_paths": { "chr22": "/app/data/genomes/chr22.vcf.gz", ... },
+     "chembl_db_present": true
+   }
+   ```
+
+   - **`vector_db`**: `"pinecone"` = real vector search (ChEMBL-backed if the Pinecone index was populated from ChEMBL); `"mock"` = no `PINECONE_API_KEY` or fallback, so mock drug list is used.
+   - **`vcf_chromosomes`**: List of chromosomes found under `data/genomes`. Non-empty means VCF files are present and will be used for VCF-based profiles (e.g. CLI `main.py --vcf` or any flow that uses `discover_vcf_paths`).
+   - **`chembl_db_present`**: `true` if the ChEMBL SQLite file exists under `data/chembl`. The **runtime** drug similarity search uses **Pinecone** (populated from ChEMBL via `scripts/ingest_chembl_to_pinecone.py`). So for “using ChEMBL” you need both: Pinecone index populated from ChEMBL, and `vector_db: "pinecone"`.
+
+2. **Health endpoint**
+   `GET /health` includes `services.vector_db`: `"connected"` (Pinecone) or `"mock_mode"` (mock).
+
+3. **From the UI after an analysis**
+   In the “Similar Drugs Retrieved” tab, if you see **“Mock Drug A”, “Mock Drug B”, “Mock Drug C”** then vector search is in mock mode. Real drug names (e.g. from your Pinecone index) mean Pinecone/ChEMBL-backed search is in use.
+
+4. **VCF in the web app**
+   The Streamlit UI currently uses **manual** patient profiles only. VCF-based profiles are used when running the **CLI** (`python main.py --vcf ...`) or when the backend is called with a profile string generated from VCF. So `vcf_chromosomes` in `/data-status` confirms VCF files are **available** for CLI or future VCF UI flows.
 
 ---
 

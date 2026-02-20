@@ -228,6 +228,55 @@ GEMINI_TEMPERATURE=0.7
 
 ---
 
+## 🚀 Step 6 (Recommended): Run with Docker Compose (Backend + Frontend)
+
+This uses the `docker-compose.yml` in the repository to run:
+
+- `backend` (FastAPI) on port `8000`
+- `frontend` (Streamlit) on port `8501`
+
+The frontend talks to the backend via `API_URL=http://backend:8000` inside the Docker network.
+
+```bash
+cd ~/SynthaTrial
+
+# First time (or after code changes)
+docker-compose up -d --build
+
+# Check status
+docker-compose ps
+```
+
+Example output:
+
+```text
+NAME                   IMAGE                  COMMAND                  SERVICE    CREATED          STATUS                             PORTS
+synthatrial-backend    synthatrial-backend    "conda run -n syntha…"   backend    1 minute ago     Up 1 minute (healthy)              0.0.0.0:8000->8000/tcp
+synthatrial-frontend   synthatrial-frontend   "conda run -n syntha…"   frontend   1 minute ago     Up 1 minute (healthy)              0.0.0.0:8501->8501/tcp
+```
+
+To see logs:
+
+```bash
+docker-compose logs -f
+```
+
+To stop everything:
+
+```bash
+docker-compose down
+```
+
+If you previously used the single-container setup and see name conflicts, use:
+
+```bash
+docker-compose down --remove-orphans
+docker rm -f synthatrial-app || true
+docker-compose up -d --build
+```
+
+---
+
 ## 🐋 Step 6: Build Docker Image
 
 ### 6.1 Verify Dockerfile

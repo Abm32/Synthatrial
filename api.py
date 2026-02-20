@@ -19,6 +19,7 @@ from src.config import config
 from src.exceptions import ConfigurationError, LLMError
 from src.input_processor import get_drug_fingerprint
 from src.logging_config import setup_logging
+from src.vcf_processor import discover_vcf_paths
 from src.vector_search import find_similar_drugs
 
 # Set up logging
@@ -185,6 +186,11 @@ async def detailed_health():
             "endpoints": [
                 {"path": "/", "method": "GET", "description": "Basic health check"},
                 {
+                    "path": "/data-status",
+                    "method": "GET",
+                    "description": "Pinecone vs mock, VCF chromosomes, ChEMBL presence",
+                },
+                {
                     "path": "/analyze",
                     "method": "POST",
                     "description": "Drug risk analysis",
@@ -195,6 +201,31 @@ async def detailed_health():
         }
     except Exception as e:
         return {"status": "error", "error": str(e), "timestamp": "2026-02-14T00:00:00Z"}
+
+
+@app.get("/data-status")
+async def data_status():
+    """
+    Report whether the app is using real data (Pinecone/ChEMBL, VCF) or mock.
+
+    - vector_db: "pinecone" when PINECONE_API_KEY is set and used; "mock" otherwise.
+    - vcf_chromosomes: chromosomes found under data/genomes (used for VCF-based profiles).
+    - chembl_db_present: True if ChEMBL SQLite exists (used to populate Pinecone; runtime search is via Pinecone).
+    """
+    app_root = os.path.dirname(os.path.abspath(__file__))
+    genomes_dir = os.path.join(app_root, "data", "genomes")
+    chembl_paths = [
+        os.path.join(app_root, "data", "chembl", "chembl_34_sqlite", "chembl_34.db"),
+        os.path.join(app_root, "data", "chembl", "chembl_34.db"),
+    ]
+    vcf_found = discover_vcf_paths(genomes_dir)
+    chembl_present = any(os.path.isfile(p) for p in chembl_paths)
+    return {
+        "vector_db": "pinecone" if config.PINECONE_API_KEY else "mock",
+        "vcf_chromosomes": list(vcf_found.keys()) if vcf_found else [],
+        "vcf_paths": vcf_found,
+        "chembl_db_present": chembl_present,
+    }
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
