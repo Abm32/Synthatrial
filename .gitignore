@@ -34,6 +34,7 @@ data/genomes/
 data/chembl/
 *.vcf
 *.vcf.gz
+*.vcf.gz.tbi
 *.tar.gz
 *.zip
 
