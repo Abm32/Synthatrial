@@ -68,9 +68,8 @@ FROM application as production
 # Expose ports
 EXPOSE 8501 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+# Health check is defined per-service in docker-compose.yml
+# (backend uses /health on 8000, frontend uses /_stcore/health on 8501)
 
 # Default command (can be overridden)
 CMD ["conda", "run", "-n", "synthatrial", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
